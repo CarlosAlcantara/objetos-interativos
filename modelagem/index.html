@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Modelagem e otimização</title>
+<title>Funções, modelagem e otimização</title>
 <style>
 :root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
 *{box-sizing:border-box}
@@ -54,8 +54,8 @@ footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);fon
 </head>
 <body>
 <header>
-<h1>Modelagem e otimização</h1>
-<p>Problemas de máximo e de mínimo, sistemas lineares e ajuste de modelos a dados experimentais.</p>
+<h1>Funções, modelagem e otimização</h1>
+<p>Funções no plano cartesiano, parábola, problemas de máximo e de mínimo, sistemas lineares e ajuste de modelos a dados experimentais.</p>
 <nav class="tabs" aria-label="Abas"></nav>
 </header>
 <main></main>
@@ -286,6 +286,17 @@ function boot(){
   window.addEventListener('hashchange', show); show();
 }
 function stageBoard(stg, o){ return new Board(stg, o); }
+
+/* Aba que incorpora um objeto já existente (cópia sem alteração em uma subpasta da página) */
+function embed(path, fixed){ // fixed: altura fixa (CSS) para objetos que ocupam a janela inteira
+  return (ctl, stg) => {
+    const panel = stg.parentElement; panel.style.gridTemplateColumns = '1fr'; ctl.style.display = 'none'; stg.style.padding = '0';
+    const fr = h('iframe', {src: path, title: 'objeto interativo', style: 'width:100%;height:' + (fixed || '900px') + ';border:0;display:block;border-radius:12px;background:#fff'});
+    const fit = () => { try { const d = fr.contentDocument; if (d && d.documentElement) fr.style.height = Math.max(600, d.documentElement.scrollHeight + 10) + 'px'; } catch (e) {} };
+    if (!fixed) fr.addEventListener('load', () => { fit(); try { new ResizeObserver(fit).observe(fr.contentDocument.body); } catch (e) {} });
+    stg.append(fr, h('p', {class: 'hint', style: 'padding:6px 12px', html: `<a href="${path}" target="_blank" rel="noopener">Abrir este objeto em uma janela própria</a>`}));
+  };
+}
 
 </script>
 <script>
@@ -538,6 +549,14 @@ tab('exponencial-dados', 'Modelos exponenciais e dados',
   };
   b.draw();
 });
+
+tab('funcoes', 'Plano cartesiano: funções',
+ 'Barras deslizantes para as funções afim, quadrática, exponencial, seno, cosseno e tangente no plano cartesiano.',
+ embed('funcoes/', 'max(640px, 88vh)'));
+
+tab('foco-diretriz', 'Parábola: foco e diretriz',
+ 'A parábola como lugar geométrico: arraste o foco, a diretriz e o ponto P e acompanhe as formas da equação.',
+ embed('parabola/', 'max(640px, 88vh)'));
 
 boot();
 </script>

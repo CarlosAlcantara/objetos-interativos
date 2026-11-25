@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano Cartesiano — Funções</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  .app{display:flex;height:100vh}
+  aside{width:350px;flex-shrink:0;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:16px 14px 24px}
+  main{flex:1;position:relative;min-width:0;background:#fff}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  h1{font-size:1.15rem;margin:0 0 4px}
+  .sub{font-size:.85rem;color:var(--muted);margin:0 0 14px;line-height:1.35}
+
+  .card{border:1px solid var(--line);border-left:6px solid var(--c);border-radius:10px;margin-bottom:10px;background:#fff;transition:box-shadow .15s}
+  .card.on{box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .head{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px}
+  .head label{display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;min-width:0}
+  .head input[type=checkbox]{width:19px;height:19px;accent-color:var(--c);flex-shrink:0;cursor:pointer}
+  .name{font-weight:600;font-size:.95rem}
+  .eq{font-family:"Cambria Math","Times New Roman",Georgia,serif;font-size:1rem;color:#374151;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .reset{border:none;background:transparent;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px 6px;border-radius:6px;display:none}
+  .card.on .reset{display:block}
+  .reset:hover{background:#f3f4f6;color:var(--ink)}
+  .params{padding:2px 12px 12px;display:none}
+  .card.on .params{display:block}
+  .row{display:grid;grid-template-columns:24px 1fr 56px;align-items:center;gap:8px;margin:7px 0}
+  .row .pl{font-family:"Times New Roman",Georgia,serif;font-style:italic;font-weight:bold;font-size:1.05rem;text-align:center}
+  .row input[type=range]{width:100%;accent-color:var(--c);cursor:pointer}
+  .row output{text-align:right;font-variant-numeric:tabular-nums;font-size:.88rem;background:#f3f4f6;border-radius:6px;padding:2px 6px}
+
+  .tip{font-size:.8rem;color:var(--muted);margin-top:14px;line-height:1.4}
+
+  .tools{position:absolute;top:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;min-width:38px;height:38px;padding:0 10px;font-size:1rem;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08);color:var(--ink)}
+  .tools button:hover{background:#f3f4f6}
+  .tools button.active{background:#1f2937;color:#fff;border-color:#1f2937}
+  .coords{position:absolute;left:12px;bottom:10px;font-size:.82rem;color:var(--muted);background:rgba(255,255,255,.9);padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums;pointer-events:none}
+  .hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#9ca3af;font-size:1rem;text-align:center;padding:20px}
+  .hint span{background:rgba(255,255,255,.85);padding:8px 14px;border-radius:8px}
+
+  @media (max-width:820px){
+    .app{flex-direction:column;height:auto}
+    aside{width:100%;border-right:none;border-bottom:1px solid var(--line)}
+    main{height:75vh;order:-1}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Plano Cartesiano</h1>
+    <p class="sub">Selecione uma ou mais funções e mova os controles deslizantes para ver como cada parâmetro altera o gráfico.</p>
+    <div id="lista"></div>
+    <p class="tip">🖱️ Arraste o plano para movê-lo e use a rolagem do mouse (ou o gesto de pinça) para aproximar/afastar. O botão <b>π</b> marca o eixo x em múltiplos de π, útil para as funções trigonométricas.</p>
+  </aside>
+
+  <main id="area">
+    <canvas id="plano"></canvas>
+    <div class="tools">
+      <button id="zin" title="Aproximar">+</button>
+      <button id="zout" title="Afastar">−</button>
+      <button id="home" title="Centralizar na origem">⌂</button>
+      <button id="pi" title="Eixo x em múltiplos de π">π</button>
+    </div>
+    <div class="coords" id="coords">x = 0 &nbsp; y = 0</div>
+    <div class="hint" id="hint"><span>Selecione uma função à esquerda para traçar o gráfico</span></div>
+  </main>
+</div>
+
+<script>
+const PI = Math.PI;
+
+/* ---------- formatação ---------- */
+const r2 = n => { const r = Math.round(n * 100) / 100; return Object.is(r, -0) ? 0 : r; };
+const fmt = n => String(r2(n)).replace('.', ',').replace('-', '−');
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+
+// n = número de doze avos de π  ->  "π/2", "3π/4"...
+function piFrac(n){
+  const g = gcd(n, 12), num = n / g, den = 12 / g;
+  return (num === 1 ? '' : num) + 'π' + (den === 1 ? '' : '/' + den);
+}
+
+// monta polinômio a partir de [coef, variável]
+function poly(terms){
+  let s = '';
+  for (const [c, v] of terms){
+    const r = r2(c);
+    if (r === 0) continue;
+    const abs = Math.abs(r);
+    const body = v ? (abs === 1 ? v : fmt(abs) + v) : fmt(abs);
+    if (s === '') s = (r < 0 ? '−' : '') + body;
+    else s += (r < 0 ? ' − ' : ' + ') + body;
+  }
+  return s || '0';
+}
+
+function coefA(A){
+  const r = r2(A);
+  return r === 1 ? '' : r === -1 ? '−' : fmt(r);
+}
+
+function trigInner(b, n){
+  let s = r2(b) === 0 ? '' : poly([[b, 'x']]);
+  if (n !== 0){
+    const t = piFrac(Math.abs(n));
+    s = s ? s + (n < 0 ? ' − ' : ' + ') + t : (n < 0 ? '−' : '') + t;
+  }
+  return s || '0';
+}
+
+function trigEq(nome, p){
+  if (r2(p.A) === 0) return 'y = 0';
+  return `y = ${coefA(p.A)}${nome}(${trigInner(p.b, p.cn)})`;
+}
+
+/* ---------- funções ---------- */
+const trigParams = () => [
+  {k:'A', min:-5, max:5, step:0.1, v:1},
+  {k:'b', min:-5, max:5, step:0.1, v:1},
+  {k:'c', min:-24, max:24, step:1, v:0, pi:true}   // em doze avos de π
+];
+
+const FUNCS = [
+  { name:'Função afim', modelo:'y = ax + b', color:'#2563eb',
+    params:[{k:'a',min:-5,max:5,step:0.1,v:1},{k:'b',min:-10,max:10,step:0.1,v:0}],
+    f:(x,p)=>p.a*x+p.b,
+    eq:p=>'y = '+poly([[p.a,'x'],[p.b,'']]) },
+
+  { name:'Função quadrática', modelo:'y = ax² + bx + c', color:'#dc2626',
+    params:[{k:'a',min:-5,max:5,step:0.1,v:1},{k:'b',min:-10,max:10,step:0.1,v:0},{k:'c',min:-10,max:10,step:0.1,v:0}],
+    f:(x,p)=>p.a*x*x+p.b*x+p.c,
+    eq:p=>'y = '+poly([[p.a,'x²'],[p.b,'x'],[p.c,'']]) },
+
+  { name:'Função exponencial', modelo:'y = C·aˣ', color:'#16a34a',
+    params:[{k:'C',min:-5,max:5,step:0.1,v:1},{k:'a',min:0.1,max:5,step:0.05,v:2}],
+    f:(x,p)=>p.C*Math.pow(p.a,x),
+    eq:p=>{
+      if (r2(p.C) === 0) return 'y = 0';
+      const C = r2(p.C);
+      const pre = C === 1 ? '' : C === -1 ? '−' : fmt(C) + '·';
+      return `y = ${pre}${fmt(p.a)}<sup>x</sup>`;
+    } },
+
+  { name:'Função seno', modelo:'y = A·sen(bx + c)', color:'#9333ea',
+    params:trigParams(),
+    f:(x,p)=>p.A*Math.sin(p.b*x+p.c),
+    eq:p=>trigEq('sen',p) },
+
+  { name:'Função cosseno', modelo:'y = A·cos(bx + c)', color:'#ea580c',
+    params:trigParams(),
+    f:(x,p)=>p.A*Math.cos(p.b*x+p.c),
+    eq:p=>trigEq('cos',p) },
+
+  { name:'Função tangente', modelo:'y = A·tg(bx + c)', color:'#0891b2',
+    params:trigParams(),
+    f:(x,p)=>p.A*Math.tan(p.b*x+p.c),
+    asym:true,
+    eq:p=>trigEq('tg',p) }
+];
+
+/* ---------- painel lateral ---------- */
+const lista = document.getElementById('lista');
+
+FUNCS.forEach(F => {
+  F.on = false;
+  F.p = {};
+  F.inputs = [];
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.setProperty('--c', F.color);
+  card.innerHTML = `
+    <div class="head">
+      <label>
+        <input type="checkbox">
+        <div style="min-width:0">
+          <div class="name">${F.name}</div>
+          <div class="eq">${F.modelo}</div>
+        </div>
+      </label>
+      <button class="reset" title="Restaurar parâmetros">↺</button>
+    </div>
+    <div class="params"></div>`;
+  lista.appendChild(card);
+
+  const chk = card.querySelector('input');
+  const eqEl = card.querySelector('.eq');
+  const box = card.querySelector('.params');
+
+  const updEq = () => { eqEl.innerHTML = F.on ? F.eq(F.p) : F.modelo; };
+
+  F.params.forEach(P => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="pl">${P.k}</span>
+      <input type="range" min="${P.min}" max="${P.max}" step="${P.step}" value="${P.v}">
+      <output></output>`;
+    box.appendChild(row);
+    const rng = row.querySelector('input');
+    const out = row.querySelector('output');
+
+    const set = () => {
+      const v = parseFloat(rng.value);
+      if (P.pi){
+        F.p.cn = Math.round(v);
+        F.p[P.k] = F.p.cn * PI / 12;
+        out.textContent = F.p.cn === 0 ? '0' : (F.p.cn < 0 ? '−' : '') + piFrac(Math.abs(F.p.cn));
+      } else {
+        F.p[P.k] = v;
+        out.textContent = fmt(v);
+      }
+    };
+    rng.addEventListener('input', () => { set(); updEq(); draw(); });
+    set();
+    F.inputs.push({rng, P, set});
+  });
+
+  chk.addEventListener('change', () => {
+    F.on = chk.checked;
+    card.classList.toggle('on', F.on);
+    updEq(); draw();
+  });
+
+  card.querySelector('.reset').addEventListener('click', () => {
+    F.inputs.forEach(({rng, P, set}) => { rng.value = P.v; set(); });
+    updEq(); draw();
+  });
+});
+
+/* ---------- plano cartesiano ---------- */
+const canvas = document.getElementById('plano');
+const ctx = canvas.getContext('2d');
+const area = document.getElementById('area');
+const hint = document.getElementById('hint');
+const coords = document.getElementById('coords');
+const btnPi = document.getElementById('pi');
+
+const view = { cx:0, cy:0, s:40 };   // centro (unidades) e escala (px por unidade)
+let piMode = false;
+let W = 0, H = 0, dpr = 1;
+
+const toX = x => W/2 + (x - view.cx) * view.s;
+const toY = y => H/2 - (y - view.cy) * view.s;
+const fromX = px => view.cx + (px - W/2) / view.s;
+const fromY = py => view.cy - (py - H/2) / view.s;
+
+function resize(){
+  dpr = window.devicePixelRatio || 1;
+  W = area.clientWidth; H = area.clientHeight;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  draw();
+}
+new ResizeObserver(resize).observe(area);
+
+function niceStep(raw){
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+function piStep(raw){
+  const u = raw / PI;
+  for (const o of [1/12, 1/6, 1/4, 1/2, 1, 2, 5, 10, 20, 50, 100]) if (o >= u * 0.75) return o * PI;
+  return niceStep(u) * PI;
+}
+function numLabel(v, step){
+  const d = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return v.toFixed(d).replace('.', ',').replace('-', '−');
+}
+function piLabel(x){
+  const k = x / PI;
+  for (const den of [1, 2, 3, 4, 6, 12]){
+    const num = Math.round(k * den);
+    if (Math.abs(k * den - num) < 1e-6){
+      if (num === 0) return '0';
+      const g = gcd(Math.abs(num), den), n = Math.abs(num) / g, d = den / g;
+      return (num < 0 ? '−' : '') + (n === 1 ? '' : n) + 'π' + (d === 1 ? '' : '/' + d);
+    }
+  }
+  return numLabel(x, 0.01);
+}
+
+function draw(){
+  if (!W) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const xmin = fromX(0), xmax = fromX(W), ymin = fromY(H), ymax = fromY(0);
+  const target = 70 / view.s;
+  const sy = niceStep(target);
+  const sx = piMode ? piStep(target) : sy;
+
+  // grade secundária
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#f1f3f7';
+  ctx.beginPath();
+  if (!piMode){
+    const m = sx / 5;
+    for (let i = Math.ceil(xmin/m); i <= Math.floor(xmax/m); i++){ const X = Math.round(toX(i*m)) + .5; ctx.moveTo(X, 0); ctx.lineTo(X, H); }
+  }
+  { const m = sy / 5;
+    for (let i = Math.ceil(ymin/m); i <= Math.floor(ymax/m); i++){ const Y = Math.round(toY(i*m)) + .5; ctx.moveTo(0, Y); ctx.lineTo(W, Y); } }
+  ctx.stroke();
+
+  // grade principal
+  ctx.strokeStyle = '#dde1ea';
+  ctx.beginPath();
+  for (let i = Math.ceil(xmin/sx); i <= Math.floor(xmax/sx); i++){ const X = Math.round(toX(i*sx)) + .5; ctx.moveTo(X, 0); ctx.lineTo(X, H); }
+  for (let i = Math.ceil(ymin/sy); i <= Math.floor(ymax/sy); i++){ const Y = Math.round(toY(i*sy)) + .5; ctx.moveTo(0, Y); ctx.lineTo(W, Y); }
+  ctx.stroke();
+
+  // eixos
+  const ax = Math.round(toX(0)) + .5, ay = Math.round(toY(0)) + .5;
+  ctx.strokeStyle = '#374151';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (ay > 0 && ay < H){ ctx.moveTo(0, ay); ctx.lineTo(W, ay); }
+  if (ax > 0 && ax < W){ ctx.moveTo(ax, 0); ctx.lineTo(ax, H); }
+  ctx.stroke();
+
+  // setas e nomes dos eixos
+  ctx.fillStyle = '#374151';
+  ctx.font = 'italic bold 15px "Times New Roman", Georgia, serif';
+  if (ay > 0 && ay < H){
+    ctx.beginPath(); ctx.moveTo(W, ay); ctx.lineTo(W-10, ay-5); ctx.lineTo(W-10, ay+5); ctx.fill();
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('x', W-8, ay-6);
+  }
+  if (ax > 0 && ax < W){
+    ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax-5, 10); ctx.lineTo(ax+5, 10); ctx.fill();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('y', ax+8, 4);
+  }
+
+  // rótulos numéricos
+  ctx.font = '12px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#ffffff';
+  ctx.fillStyle = '#4b5563';
+  const halo = (t, x, y) => { ctx.strokeText(t, x, y); ctx.fillText(t, x, y); };
+
+  let ly = ay + 5, baseX = 'top';
+  if (ly < 4) ly = 4;
+  if (ly > H - 18){ ly = H - 4; baseX = 'bottom'; }
+  ctx.textAlign = 'center'; ctx.textBaseline = baseX;
+  for (let i = Math.ceil(xmin/sx); i <= Math.floor(xmax/sx); i++){
+    if (i === 0) continue;
+    const x = i * sx;
+    halo(piMode ? piLabel(x) : numLabel(x, sx), toX(x), ly);
+  }
+
+  let lx = ax - 6, alignY = 'right';
+  if (lx < 30){ lx = 6; alignY = 'left'; }
+  if (lx > W - 6){ lx = W - 6; alignY = 'right'; }
+  ctx.textAlign = alignY; ctx.textBaseline = 'middle';
+  for (let i = Math.ceil(ymin/sy); i <= Math.floor(ymax/sy); i++){
+    if (i === 0) continue;
+    const y = i * sy;
+    halo(numLabel(y, sy), lx, toY(y));
+  }
+  if (ax > 0 && ax < W && ay > 0 && ay < H){
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top'; halo('0', ax - 5, ay + 5);
+  }
+
+  // gráficos
+  let algum = false;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const F of FUNCS){
+    if (!F.on) continue;
+    algum = true;
+    ctx.strokeStyle = F.color;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    let pen = false, prevSign = null;
+    for (let px = -1; px <= W + 1; px += 0.5){
+      const x = fromX(px);
+      const y = F.f(x, F.p);
+      let quebra = !isFinite(y);
+      if (F.asym){
+        const s = Math.sign(Math.cos(F.p.b * x + F.p.c));
+        if (prevSign !== null && s !== prevSign) quebra = true;
+        prevSign = s;
+      }
+      if (quebra){ pen = false; continue; }
+      const py = Math.max(-1e4, Math.min(H + 1e4, toY(y)));
+      if (!pen){ ctx.moveTo(px, py); pen = true; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  hint.style.display = algum ? 'none' : 'flex';
+}
+
+/* ---------- interação: arrastar, zoom, pinça ---------- */
+function zoomAt(px, py, f){
+  const wx = fromX(px), wy = fromY(py);
+  view.s = Math.min(5000, Math.max(2, view.s * f));
+  view.cx = wx - (px - W/2) / view.s;
+  view.cy = wy + (py - H/2) / view.s;
+}
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * 0.0015));
+  draw();
+}, { passive:false });
+
+const pts = new Map();
+let pinch = null;
+const pinchInfo = () => {
+  const [a, b] = [...pts.values()];
+  return { d: Math.hypot(a.x - b.x, a.y - b.y), m: { x:(a.x + b.x)/2, y:(a.y + b.y)/2 } };
+};
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId, { x:e.offsetX, y:e.offsetY });
+  canvas.style.cursor = 'grabbing';
+  if (pts.size === 2) pinch = pinchInfo();
+});
+
+canvas.addEventListener('pointermove', e => {
+  coords.innerHTML = `x = ${fmt(fromX(e.offsetX))} &nbsp; y = ${fmt(fromY(e.offsetY))}`;
+  if (!pts.has(e.pointerId)) return;
+  const prev = pts.get(e.pointerId);
+  const cur = { x:e.offsetX, y:e.offsetY };
+  pts.set(e.pointerId, cur);
+  if (pts.size === 1){
+    view.cx -= (cur.x - prev.x) / view.s;
+    view.cy += (cur.y - prev.y) / view.s;
+  } else if (pts.size === 2 && pinch){
+    const now = pinchInfo();
+    view.cx -= (now.m.x - pinch.m.x) / view.s;
+    view.cy += (now.m.y - pinch.m.y) / view.s;
+    if (pinch.d > 0) zoomAt(now.m.x, now.m.y, now.d / pinch.d);
+    pinch = now;
+  }
+  draw();
+});
+
+const fim = e => {
+  pts.delete(e.pointerId);
+  pinch = pts.size === 2 ? pinchInfo() : null;
+  if (pts.size === 0) canvas.style.cursor = 'grab';
+};
+canvas.addEventListener('pointerup', fim);
+canvas.addEventListener('pointercancel', fim);
+
+/* ---------- botões ---------- */
+document.getElementById('zin').onclick  = () => { zoomAt(W/2, H/2, 1.4); draw(); };
+document.getElementById('zout').onclick = () => { zoomAt(W/2, H/2, 1/1.4); draw(); };
+document.getElementById('home').onclick = () => { view.cx = 0; view.cy = 0; view.s = 40; draw(); };
+btnPi.onclick = () => { piMode = !piMode; btnPi.classList.toggle('active', piMode); draw(); };
+
+resize();
+</script>
+</body>
+</html>
