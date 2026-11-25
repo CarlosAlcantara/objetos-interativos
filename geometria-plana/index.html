@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geometria plana</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Geometria plana</h1>
+<p>Áreas, geoplano, quadriláteros, ângulos, semelhança, ladrilhamentos e construções que resistem ao arrastar.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Geometria plana ===== */
+const D2 = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+const rot = (p, c, a) => [c[0] + (p[0] - c[0]) * Math.cos(a) - (p[1] - c[1]) * Math.sin(a), c[1] + (p[0] - c[0]) * Math.sin(a) + (p[1] - c[1]) * Math.cos(a)];
+function areaPoly(P){ let s = 0; for (let i = 0; i < P.length; i++){ const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length]; s += x1 * y2 - x2 * y1; } return s / 2; }
+function angAt(A, B, Cc){ const u = [A[0] - B[0], A[1] - B[1]], v = [Cc[0] - B[0], Cc[1] - B[1]]; return Math.acos(clamp((u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v)), -1, 1)) * 180 / Math.PI; }
+function segX(p1, p2, p3, p4){ const d = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); const d1 = d(p3, p4, p1), d2 = d(p3, p4, p2), d3 = d(p1, p2, p3), d4 = d(p1, p2, p4); return d1 * d2 < 0 && d3 * d4 < 0; }
+function simple(P){ const n = P.length; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++){ if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue; if (segX(P[i], P[(i + 1) % n], P[j], P[(j + 1) % n])) return false; } return true; }
+const snap = (v, s = 1) => Math.round(v / s) * s;
+
+tab('reconfiguracao', 'Áreas por reconfiguração',
+ 'As fórmulas de área do paralelogramo, do triângulo e do trapézio podem ser obtidas recortando e reorganizando figuras. Mova a barra <b>Movimento</b>: o paralelogramo vira um retângulo de mesma base e mesma altura, e duas cópias de um triângulo ou de um trapézio formam um paralelogramo.',
+ (ctl, stg) => {
+  const fig = select(ctl, 'Figura', [['par', 'Paralelogramo'], ['tri', 'Triângulo'], ['trap', 'Trapézio']], () => draw());
+  const sb = slider(ctl, {label: 'Base (maior)', min: 3, max: 8, step: 0.5, value: 6, fmt: v => fmt(v, 1)}, () => draw());
+  const sb2 = slider(ctl, {label: 'Base menor (trapézio)', min: 1, max: 5, step: 0.5, value: 3, fmt: v => fmt(v, 1)}, () => draw());
+  const sh = slider(ctl, {label: 'Altura', min: 2, max: 5, step: 0.5, value: 3.5, fmt: v => fmt(v, 1)}, () => draw());
+  const ss = slider(ctl, {label: 'Inclinação', min: 0.5, max: 3, step: 0.5, value: 2, fmt: v => fmt(v, 1)}, () => draw());
+  const st = slider(ctl, {label: 'Movimento', min: 0, max: 100, value: 0, fmt: v => v + '%'}, () => draw());
+  const bb = btns(ctl); let an;
+  button(bb, 'Animar', () => { cancelAnimationFrame(an); const dir = st.v < 50 ? 1 : -1; const go = () => { st.v = clamp(st.v + dir * 1.5, 0, 100); draw(); if (st.v > 0 && st.v < 100) an = requestAnimationFrame(go); }; go(); }, true);
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6});
+  function draw(){
+    const B = sb.v, hh = sh.v, s = ss.v, bm = Math.min(sb2.v, B - .5), t = st.v / 100, tt = t * t * (3 - 2 * t), f = fig.value;
+    sb2.wrap.style.display = f === 'trap' ? '' : 'none';
+    b.view(-1, 17, -1.2, 6.5);
+    b.onDraw = () => {
+      b.grid(1);
+      if (f === 'par'){
+        const P = [[0, 0], [B, 0], [B + s, hh], [s, hh]];
+        b.poly([[s, 0], [B, 0], [B + s, hh], [s, hh]], {fill: '#9fd8cf', color: C.acc, lw: 2});
+        const T = [[0, 0], [s, 0], [s, hh]].map(p => [p[0] + B * tt, p[1]]);
+        b.poly(T, {fill: '#f7c3b2', color: C.acc2, lw: 2});
+        if (tt < .02) b.poly(P, {color: C.ink, lw: 2.5});
+        b.line(s, 0, s, hh, {color: C.muted, dash: [4, 3], lw: 1.2});
+        b.text('base ' + fmt(B, 1), (s + B) / 2 + (tt > .5 ? s / 2 : 0), -.5, {bold: true}); b.text('altura ' + fmt(hh, 1), s + .15, hh / 2, {align: 'left', size: 12, bg: 'rgba(255,255,255,.8)'});
+        out.innerHTML = `O triângulo recortado (laranja) é transportado para o outro lado.<br>Retângulo: base ${fmt(B, 1)} e altura ${fmt(hh, 1)}<br><span class="big">A = b · h = ${fmt(B * hh, 2)}</span>`;
+      } else if (f === 'tri'){
+        const P = [[0, 0], [B, 0], [s, hh]], M = mid(P[1], P[2]);
+        b.poly(P, {fill: '#9fd8cf', color: C.acc, lw: 2});
+        const Q = P.map(p => rot(p, M, Math.PI * tt));
+        b.poly(Q, {fill: 'rgba(231,111,81,.45)', color: C.acc2, lw: 2});
+        b.dot(M[0], M[1], {fill: C.ink, r: 4});
+        b.text('base ' + fmt(B, 1), B / 2, -.5, {bold: true});
+        out.innerHTML = `A cópia gira 180° em torno do ponto médio de um lado.<br>As duas cópias formam um paralelogramo de base ${fmt(B, 1)} e altura ${fmt(hh, 1)}.<br><span class="big">A = b · h / 2 = ${fmt(B * hh / 2, 2)}</span>`;
+      } else {
+        const P = [[0, 0], [B, 0], [s + bm, hh], [s, hh]], M = mid(P[1], P[2]);
+        b.poly(P, {fill: '#9fd8cf', color: C.acc, lw: 2});
+        const Q = P.map(p => rot(p, M, Math.PI * tt));
+        b.poly(Q, {fill: 'rgba(231,111,81,.45)', color: C.acc2, lw: 2});
+        b.text('B = ' + fmt(B, 1), B / 2, -.5, {bold: true}); b.text('b = ' + fmt(bm, 1), s + bm / 2, hh + .45, {bold: true});
+        out.innerHTML = `A cópia gira 180° em torno do ponto médio de um lado não paralelo.<br>Paralelogramo de base B + b = ${fmt(B + bm, 1)} e altura ${fmt(hh, 1)}.<br><span class="big">A = (B + b) · h / 2 = ${fmt((B + bm) * hh / 2, 2)}</span>`;
+      }
+    };
+    b.draw();
+  }
+  draw();
+});
+
+tab('geoplano', 'Geoplano e teorema de Pick',
+ 'Clique nos pinos da malha para formar um polígono (os vértices são ligados na ordem dos cliques). O objeto conta os pontos interiores <i>I</i> e os pontos do contorno <i>B</i> e compara a área dada pela fórmula de Pick, <i>A</i> = <i>I</i> + <i>B</i>/2 - 1, com a área obtida pelo retângulo circunscrito, retirando dele as partes que ficam fora do polígono. Arraste um vértice para mudar o polígono.',
+ (ctl, stg) => {
+  let P = [[1, 3], [3, 0], [5, 3], [4, 4], [0, 4]].map(p => [p[0] + 2, p[1] + 1]);
+  const bb = btns(ctl);
+  button(bb, 'Exemplo', () => { P = [[1, 3], [3, 0], [5, 3], [4, 4], [0, 4]].map(p => [p[0] + 2, p[1] + 1]); sync(); });
+  button(bb, 'Desfazer', () => { P.pop(); sync(); });
+  button(bb, 'Limpar', () => { P = []; sync(); });
+  const cp = check(ctl, 'Marcar os pontos contados', true, () => b.draw());
+  const cr = check(ctl, 'Mostrar o retângulo circunscrito', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.35});
+  const W = 12, H = 9;
+  b.view(-.6, W + .6, -.6, H + .6);
+  function sync(){ b.handles = []; P.forEach((p, i) => b.handle(() => P[i], (x, y) => { P[i] = [clamp(snap(x), 0, W), clamp(snap(y), 0, H)]; }, {r: 12})); b.draw(); }
+  b.onClick = (x, y) => { const q = [snap(x), snap(y)]; if (q[0] < 0 || q[0] > W || q[1] < 0 || q[1] > H) return; if (P.some(p => p[0] === q[0] && p[1] === q[1])) return; P.push(q); sync(); };
+  function onSeg(q, a, c){ const cr = (c[0] - a[0]) * (q[1] - a[1]) - (c[1] - a[1]) * (q[0] - a[0]); if (cr !== 0) return false; return Math.min(a[0], c[0]) <= q[0] && q[0] <= Math.max(a[0], c[0]) && Math.min(a[1], c[1]) <= q[1] && q[1] <= Math.max(a[1], c[1]); }
+  function inside(q){ let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++){ const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > q[1]) !== (yj > q[1]) && q[0] < (xj - xi) * (q[1] - yi) / (yj - yi) + xi) c = !c; } return c; }
+  b.onDraw = () => {
+    b.rect(-.5, -.5, W + 1, H + 1, {fill: '#f3e9d8', stroke: null});
+    const n = P.length, ok = n >= 3 && simple(P);
+    if (n >= 3) b.poly(P, {fill: ok ? 'rgba(42,157,143,.25)' : 'rgba(192,57,43,.15)', color: ok ? C.acc : C.red, lw: 3});
+    else if (n === 2) b.line(P[0][0], P[0][1], P[1][0], P[1][1], {color: C.acc, lw: 3});
+    let I = 0, Bc = 0;
+    for (let x = 0; x <= W; x++) for (let y = 0; y <= H; y++){
+      let kind = 0;
+      if (ok){ if (P.some((p, i) => onSeg([x, y], p, P[(i + 1) % n]))) kind = 2; else if (inside([x, y])) kind = 1; }
+      if (kind === 1) I++; if (kind === 2) Bc++;
+      b.dot(x, y, {fill: cp.checked && kind === 1 ? C.acc2 : cp.checked && kind === 2 ? C.blue : '#8d7b69', r: kind && cp.checked ? 5.5 : 3.5, lw: 0});
+    }
+    const xs = P.map(p => p[0]), ys = P.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    if (ok && cr.checked) b.rect(x0, y0, x1 - x0, y1 - y0, {color: C.purple, dash: [6, 4], lw: 2});
+    P.forEach(p => b.dot(p[0], p[1], {fill: C.ink, r: 6}));
+    if (!ok){ out.innerHTML = n < 3 ? 'Clique em pelo menos três pinos para formar um polígono.' : '<span class="bad">Os lados se cruzam: o polígono precisa ser simples.</span>'; return; }
+    const A = Math.abs(areaPoly(P));
+    out.innerHTML = `<span style="color:${C.acc2}">Pontos interiores: I = <b>${I}</b></span><br><span style="color:${C.blue}">Pontos do contorno: B = <b>${Bc}</b></span><br>` +
+      `Pick: I + B/2 - 1 = ${I} + ${Bc}/2 - 1 = <b>${fmt(I + Bc / 2 - 1, 1)}</b><br>Retângulo circunscrito: ${x1 - x0} · ${y1 - y0} = ${(x1 - x0) * (y1 - y0)}<br>Partes do retângulo fora do polígono: ${fmt((x1 - x0) * (y1 - y0) - A, 1)}<br>Área pelo retângulo: ${(x1 - x0) * (y1 - y0)} - ${fmt((x1 - x0) * (y1 - y0) - A, 1)} = <b>${fmt(A, 1)}</b><br>` +
+      (Math.abs(A - (I + Bc / 2 - 1)) < 1e-9 ? '<span class="ok">Os dois valores coincidem.</span>' : '') + '<div class="hint">A unidade de área é o quadradinho da malha.</div>';
+  };
+  sync();
+});
+
+tab('quadrilateros', 'Quadriláteros e Varignon',
+ 'Arraste os vértices de um quadrilátero, inclusive para torná-lo não convexo. Os pontos médios dos lados formam sempre um paralelogramo (teorema de Varignon), com metade da área do quadrilátero convexo. O objeto também mede as diagonais e indica quando são perpendiculares: o losango e a pipa têm diagonais perpendiculares, mas só o losango tem os quatro lados iguais.',
+ (ctl, stg) => {
+  let Q = [[-4, -2], [3, -3], [4, 2], [-2, 3]];
+  const cv = check(ctl, 'Mostrar o paralelogramo de Varignon', true, () => b.draw());
+  const cd = check(ctl, 'Mostrar as diagonais', false, () => b.draw());
+  const bb = btns(ctl);
+  button(bb, 'Qualquer', () => { Q = [[-4, -2], [3, -3], [4, 2], [-2, 3]]; b.draw(); });
+  button(bb, 'Não convexo', () => { Q = [[-4, -3], [4, -3], [0, -0.5], [-1, 4]]; b.draw(); });
+  button(bb, 'Losango', () => { Q = [[0, -3], [2, 0], [0, 3], [-2, 0]]; cd.checked = true; b.draw(); });
+  button(bb, 'Pipa', () => { Q = [[0, -4], [2, 1], [0, 2.5], [-2, 1]]; cd.checked = true; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.3});
+  b.view(-6, 6, -5, 5);
+  Q.forEach((_, i) => b.handle(() => Q[i], (x, y) => { Q[i] = [clamp(snap(x, .5), -5.5, 5.5), clamp(snap(y, .5), -4.5, 4.5)]; }, {r: 14}));
+  b.onDraw = () => {
+    b.grid(1);
+    b.poly(Q, {fill: 'rgba(58,110,165,.12)', color: C.blue, lw: 2.5});
+    const M = Q.map((p, i) => mid(p, Q[(i + 1) % 4]));
+    if (cv.checked){ b.poly(M, {fill: 'rgba(231,111,81,.25)', color: C.acc2, lw: 2.2}); M.forEach(m => b.dot(m[0], m[1], {fill: C.acc2, r: 5})); }
+    let perp = false, ang = 0;
+    if (cd.checked){ b.line(Q[0][0], Q[0][1], Q[2][0], Q[2][1], {color: C.purple, lw: 1.8, dash: [6, 4]}); b.line(Q[1][0], Q[1][1], Q[3][0], Q[3][1], {color: C.purple, lw: 1.8, dash: [6, 4]}); }
+    const u = [Q[2][0] - Q[0][0], Q[2][1] - Q[0][1]], v = [Q[3][0] - Q[1][0], Q[3][1] - Q[1][1]];
+    ang = Math.acos(Math.abs(u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v))) * 180 / Math.PI; perp = Math.abs(ang - 90) < .01;
+    'ABCD'.split('').forEach((l, i) => { b.dot(Q[i][0], Q[i][1], {fill: C.blue, r: 7}); b.text(l, Q[i][0], Q[i][1], {dx: 14, dy: -12, bold: true}); });
+    const L = Q.map((p, i) => D2(p, Q[(i + 1) % 4])), eq = (a, c) => Math.abs(a - c) < 1e-6;
+    let cls = 'quadrilátero qualquer';
+    if (!simple(Q)) cls = 'os lados se cruzam (não é um quadrilátero simples)';
+    else if (L.every(x => eq(x, L[0]))) cls = perp && eq(D2(Q[0], Q[2]), D2(Q[1], Q[3])) ? 'quadrado' : 'losango';
+    else if ((eq(L[0], L[1]) && eq(L[2], L[3])) || (eq(L[1], L[2]) && eq(L[3], L[0]))) cls = 'pipa (deltoide)';
+    else if (eq(L[0], L[2]) && eq(L[1], L[3])) cls = 'paralelogramo';
+    const Aq = Math.abs(areaPoly(Q)), Av = Math.abs(areaPoly(M)), Mp = M.map((p, i) => D2(p, M[(i + 1) % 4]));
+    out.innerHTML = `Classificação: <b>${cls}</b><br>Lados: ${L.map(x => fmt(x, 2)).join('; ')}<br>Ângulo entre as diagonais: <b>${fmt(ang, 1)}°</b> ${perp ? '<span class="ok">(perpendiculares)</span>' : ''}<br>` +
+      `Paralelogramo de Varignon: lados opostos ${fmt(Mp[0], 2)} e ${fmt(Mp[2], 2)}; ${fmt(Mp[1], 2)} e ${fmt(Mp[3], 2)}<br>Área do quadrilátero: ${fmt(Aq, 2)}; área do paralelogramo: ${fmt(Av, 2)}` +
+      (cls === 'pipa (deltoide)' && perp ? '<div class="hint">A pipa tem diagonais perpendiculares e não é losango: é um contraexemplo para "todo quadrilátero de diagonais perpendiculares é losango".</div>' : '');
+  };
+  b.draw();
+});
+
+tab('triangulo', 'Ângulos e lados do triângulo',
+ 'No modo <b>ângulos</b>, arraste os vértices: as medidas dos ângulos internos mudam, mas a soma é sempre 180°. No modo <b>desigualdade triangular</b>, escolha três comprimentos: o triângulo só fecha quando cada lado é menor que a soma dos outros dois.',
+ (ctl, stg) => {
+  const mode = select(ctl, 'Modo', [['a', 'Soma dos ângulos internos'], ['d', 'Desigualdade triangular']], () => { const d = mode.value === 'd'; [sa, sb, sc].forEach(s => s.wrap.style.display = d ? '' : 'none'); b.draw(); });
+  const sa = slider(ctl, {label: 'Lado <i>a</i>', min: 1, max: 10, step: 0.5, value: 4, fmt: v => fmt(v, 1)}, () => b.draw());
+  const sb = slider(ctl, {label: 'Lado <i>b</i>', min: 1, max: 10, step: 0.5, value: 5, fmt: v => fmt(v, 1)}, () => b.draw());
+  const sc = slider(ctl, {label: 'Lado <i>c</i> (base)', min: 1, max: 10, step: 0.5, value: 7, fmt: v => fmt(v, 1)}, () => b.draw());
+  [sa, sb, sc].forEach(s => s.wrap.style.display = 'none');
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5});
+  let T = [[-4, -2], [4, -2], [0, 3.5]];
+  b.view(-7, 7, -4, 5.5);
+  T.forEach((_, i) => b.handle(() => T[i], (x, y) => { T[i] = [clamp(x, -6.5, 6.5), clamp(y, -3.8, 5.2)]; }, {r: 14, hidden: () => mode.value !== 'a'}));
+  b.onDraw = () => {
+    if (mode.value === 'a'){
+      b.grid(1);
+      b.poly(T, {fill: 'rgba(42,157,143,.15)', color: C.ink, lw: 2.5});
+      const cols = [C.acc2, C.blue, C.gold], angs = T.map((p, i) => angAt(T[(i + 2) % 3], p, T[(i + 1) % 3]));
+      T.forEach((p, i) => { const a1 = Math.atan2(T[(i + 1) % 3][1] - p[1], T[(i + 1) % 3][0] - p[0]), a2 = Math.atan2(T[(i + 2) % 3][1] - p[1], T[(i + 2) % 3][0] - p[0]); let s1 = a1, s2 = a2; let d = s2 - s1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; b.arc(p[0], p[1], .7, s1, s1 + d, {fill: cols[i] + '88', color: cols[i], lw: 2}); b.dot(p[0], p[1], {fill: C.ink, r: 6}); b.text(fmt(angs[i], 1) + '°', p[0], p[1], {dy: p[1] > -1 ? -20 : 20, bold: true, color: cols[i], bg: 'rgba(255,255,255,.85)'}); });
+      out.innerHTML = `${angs.map((a, i) => `<span style="color:${cols[i]}">${fmt(a, 1)}°</span>`).join(' + ')} = <span class="big">${fmt(angs.reduce((x, y) => x + y), 1)}°</span><div class="hint">A demonstração usa uma reta paralela a um lado, passando pelo vértice oposto: os ângulos alternos internos completam um ângulo raso.</div>`;
+    } else {
+      const a = sa.v, bv = sb.v, c = sc.v, ok = a < bv + c && bv < a + c && c < a + bv, A = [-c / 2, -2], B = [c / 2, -2];
+      b.line(A[0], A[1], B[0], B[1], {color: C.ink, lw: 4}); b.text('c = ' + fmt(c, 1), 0, -2.5, {bold: true});
+      b.circle(A[0], A[1], bv, {color: C.blue, lw: 1.2, dash: [5, 4]}); b.circle(B[0], B[1], a, {color: C.acc2, lw: 1.2, dash: [5, 4]});
+      if (ok){ const x = (bv * bv - a * a + c * c) / (2 * c), y = Math.sqrt(Math.max(0, bv * bv - x * x)), Cc = [A[0] + x, A[1] + y];
+        b.line(A[0], A[1], Cc[0], Cc[1], {color: C.blue, lw: 4}); b.line(B[0], B[1], Cc[0], Cc[1], {color: C.acc2, lw: 4}); b.dot(Cc[0], Cc[1], {fill: C.ink, r: 6}); }
+      else { b.line(A[0], A[1], A[0] + Math.min(bv, 12) * Math.cos(1.1), A[1] + Math.min(bv, 12) * Math.sin(1.1), {color: C.blue, lw: 4}); b.line(B[0], B[1], B[0] - a * Math.cos(1.1), B[1] + a * Math.sin(1.1), {color: C.acc2, lw: 4}); }
+      out.innerHTML = `${fmt(a, 1)} &lt; ${fmt(bv, 1)} + ${fmt(c, 1)}? ${a < bv + c ? 'sim' : 'não'}<br>${fmt(bv, 1)} &lt; ${fmt(a, 1)} + ${fmt(c, 1)}? ${bv < a + c ? 'sim' : 'não'}<br>${fmt(c, 1)} &lt; ${fmt(a, 1)} + ${fmt(bv, 1)}? ${c < a + bv ? 'sim' : 'não'}<br>` +
+        (ok ? '<span class="ok">O triângulo existe: as circunferências se cortam.</span>' : '<span class="bad">O triângulo não fecha: as circunferências não se cortam (ou só se tocam, e o "triângulo" fica achatado).</span>');
+    }
+  };
+  b.draw();
+});
+
+tab('semelhanca', 'Semelhança e áreas',
+ 'Ao ampliar ou reduzir uma figura na razão <i>k</i>, todos os comprimentos ficam multiplicados por <i>k</i>, mas a área fica multiplicada por <i>k</i>². Conte os quadradinhos: com <i>k</i> = 2, cabem quatro cópias da figura original na ampliada.',
+ (ctl, stg) => {
+  const sk = slider(ctl, {label: 'Razão <i>k</i>', min: 0.5, max: 3, step: 0.25, value: 2, fmt: v => fmt(v, 2)}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5});
+  const F = [[0, 0], [3, 0], [3, 2], [1.5, 3], [0, 2]];
+  b.view(-.5, 14, -.5, 9.5);
+  b.onDraw = () => {
+    const k = sk.v; b.grid(1);
+    b.poly(F, {fill: 'rgba(58,110,165,.3)', color: C.blue, lw: 2.5});
+    const G = F.map(p => [4 + p[0] * k, p[1] * k]);
+    b.poly(G, {fill: 'rgba(231,111,81,.3)', color: C.acc2, lw: 2.5});
+    b.text('original', 1.5, -.3, {size: 11, color: C.blue}); b.text('k = ' + fmt(k, 2), 4 + 1.5 * k, -.3, {size: 11, color: C.acc2});
+    const A = Math.abs(areaPoly(F)), P = F.reduce((s, p, i) => s + D2(p, F[(i + 1) % F.length]), 0);
+    out.innerHTML = `Perímetro: ${fmt(P, 2)} → <b>${fmt(P * k, 2)}</b> (× ${fmt(k, 2)})<br>Área: ${fmt(A, 2)} → <b>${fmt(A * k * k, 2)}</b> (× ${fmt(k * k, 4)})<br><span class="big">área ampliada / área original = k² = ${fmt(k * k, 4)}</span>`;
+  };
+  b.draw();
+});
+
+tab('ladrilhamento', 'Ladrilhamentos',
+ 'Polígonos regulares só preenchem o plano em torno de um vértice, sem buracos nem sobreposições, quando a soma dos ângulos internos que se encontram nesse vértice é exatamente 360°. Acrescente polígonos em torno do vértice ou escolha uma configuração pronta.',
+ (ctl, stg) => {
+  let L = [6, 6, 6];
+  const bb = btns(ctl);
+  [3, 4, 5, 6, 8, 10, 12].forEach(n => button(bb, '+ ' + ({3: 'triângulo', 4: 'quadrado', 5: 'pentágono', 6: 'hexágono', 8: 'octógono', 10: 'decágono', 12: 'dodecágono'})[n], () => { if (L.length < 8) L.push(n); b.draw(); }));
+  const b2 = btns(ctl);
+  button(b2, 'Desfazer', () => { L.pop(); b.draw(); }); button(b2, 'Limpar', () => { L = []; b.draw(); });
+  const pre = select(ctl, 'Configurações prontas', [['', 'Escolha...'], ['3,3,3,3,3,3', '6 triângulos (regular)'], ['4,4,4,4', '4 quadrados (regular)'], ['6,6,6', '3 hexágonos (regular)'], ['3,3,3,4,4', 'triângulos e quadrados'], ['4,8,8', 'quadrado e octógonos'], ['3,12,12', 'triângulo e dodecágonos'], ['3,4,6,4', 'triângulo, quadrados e hexágono'], ['5,5,5', '3 pentágonos (não fecha)']], v => { if (v) L = v.split(',').map(Number); b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.3});
+  b.view(-3.2, 3.2, -2.6, 2.6);
+  const ang = n => 180 * (n - 2) / n;
+  b.onDraw = () => {
+    let a0 = 0; const s = 1.15;
+    L.forEach((n, i) => {
+      const a = ang(n) * Math.PI / 180, pts = [[0, 0]];
+      // polígono com vértice na origem, lados nas direções a0 e a0 + a
+      let p = [s * Math.cos(a0), s * Math.sin(a0)], dir = a0 + Math.PI - (Math.PI - 2 * Math.PI / n) + 0; // vira 2π/n a cada lado
+      pts.push(p); let d = a0;
+      for (let k = 1; k < n - 1; k++){ d += 2 * Math.PI / n; p = [p[0] + s * Math.cos(d), p[1] + s * Math.sin(d)]; pts.push(p); }
+      b.poly(pts, {fill: PAL[[3, 4, 5, 6, 8, 10, 12].indexOf(n)] + '88', color: C.ink, lw: 1.5});
+      a0 += a;
+    });
+    b.dot(0, 0, {fill: C.ink, r: 5});
+    const S = L.reduce((t, n) => t + ang(n), 0);
+    out.innerHTML = `Ângulos: ${L.length ? L.map(n => fmt(ang(n), 2) + '°').join(' + ') : '-'}<br><span class="big">Soma: ${fmt(S, 2)}°</span><br>` +
+      (Math.abs(S - 360) < 1e-6 ? '<span class="ok">Fecha exatamente: essa configuração ladrilha em torno do vértice.</span>' : S > 360 ? '<span class="bad">Passa de 360°: os polígonos se sobrepõem.</span>' : `Faltam ${fmt(360 - S, 2)}° para fechar.`) +
+      '<div class="hint">O pentágono regular tem ângulo interno de 108°, que não divide 360°.</div>';
+  };
+  b.draw();
+});
+
+tab('malha', 'Área por malha',
+ 'A área de uma região irregular, como a de um lago, pode ser estimada com uma malha. Os quadrados inteiramente dentro da região dão uma estimativa por falta; somando os que tocam o contorno, obtemos uma estimativa por excesso. Refine a malha e veja as duas estimativas se aproximarem.',
+ (ctl, stg) => {
+  const sm = select(ctl, 'Lado dos quadrados da malha', [['10', '10 m'], ['5', '5 m'], ['2.5', '2,5 m'], ['1.25', '1,25 m']], () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.25});
+  const R = t => 33 + 7 * Math.sin(2 * t + .5) + 5 * Math.cos(3 * t) + 3 * Math.sin(5 * t + 1);
+  const cx = 45, cy = 40, inside = (x, y) => { const t = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < R(t); };
+  let real = 0; for (let k = 0; k < 2000; k++){ const t = 2 * Math.PI * k / 2000; real += R(t) * R(t) / 2 * (2 * Math.PI / 2000); }
+  b.view(0, 90, 0, 80);
+  b.onDraw = () => {
+    const s = +sm.value; let I = 0, Bd = 0;
+    for (let x = 0; x < 90; x += s) for (let y = 0; y < 80; y += s){
+      let n = 0, tot = 0; for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++){ tot++; if (inside(x + s * i / 4, y + s * j / 4)) n++; }
+      if (n === tot){ I++; b.rect(x, y, s, s, {fill: 'rgba(42,157,143,.45)', stroke: null}); }
+      else if (n > 0){ Bd++; b.rect(x, y, s, s, {fill: 'rgba(233,196,106,.55)', stroke: null}); }
+    }
+    b.grid(s, 'rgba(31,42,55,.25)');
+    const pts = []; for (let k = 0; k <= 200; k++){ const t = 2 * Math.PI * k / 200; pts.push([cx + R(t) * Math.cos(t), cy + R(t) * Math.sin(t)]); }
+    b.path(pts, {color: C.blue, lw: 2.5});
+    const q = s * s;
+    out.innerHTML = `<span style="color:${C.acc}">Quadrados internos: <b>${I}</b></span><br><span style="color:#9a7b1f">Quadrados do contorno: <b>${Bd}</b></span><br>` +
+      `Por falta: ${I} · ${fmt(q, 4)} = <b>${fmt(I * q, 1)} m²</b><br>Por excesso: ${I + Bd} · ${fmt(q, 4)} = <b>${fmt((I + Bd) * q, 1)} m²</b><br>Internos + metade do contorno: <b>${fmt((I + Bd / 2) * q, 1)} m²</b><br>Diferença entre as estimativas: ${fmt(Bd * q, 1)} m²` +
+      `<div class="hint">Área calculada para este contorno fictício: cerca de ${fmt(real, 0)} m².</div>`;
+  };
+  b.draw();
+});
+
+tab('arrastar', 'O teste do arrastar',
+ 'Em geometria dinâmica, um <b>desenho</b> tem a aparência certa, mas suas propriedades se perdem quando um ponto é arrastado; uma <b>construção</b> mantém as propriedades porque elas foram garantidas pelas ferramentas. Arraste os pontos e compare.',
+ (ctl, stg) => {
+  const mode = select(ctl, 'Situação', [['q', 'Quadrado desenhado e quadrado construído'], ['t', 'Tangente "no olho" e tangente construída']], () => { reset(); });
+  button(btns(ctl), 'Recomeçar', () => reset());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6});
+  b.view(-9, 9, -5, 6);
+  let D, Cq, V, a, T0, eye;
+  function reset(){
+    D = [[-7.5, -2], [-3.5, -2], [-3.5, 2], [-7.5, 2]]; Cq = [[2, -2], [6, -2]];
+    V = [0, -3]; a = 0.35; T0 = 2.5; const y = a * (T0 - V[0]) ** 2 + V[1], m = 2 * a * (T0 - V[0]); eye = [m, y - m * T0];
+    b.handles = [];
+    if (mode.value === 'q'){
+      D.forEach((_, i) => b.handle(() => D[i], (x, y) => { D[i] = [x, y]; }, {r: 13}));
+      Cq.forEach((_, i) => b.handle(() => Cq[i], (x, y) => { Cq[i] = [x, y]; }, {r: 13}));
+    } else {
+      b.handle(() => V, (x, y) => { V = [x, y]; }, {r: 14});
+      b.handle(() => [V[0] + 2, V[1] + a * 4], (x, y) => { a = clamp((y - V[1]) / 4, -1.5, 1.5); if (Math.abs(a) < .05) a = .05; }, {r: 14});
+    }
+    b.draw();
+  }
+  b.onDraw = () => {
+    b.grid(1);
+    if (mode.value === 'q'){
+      b.poly(D, {fill: 'rgba(231,111,81,.2)', color: C.acc2, lw: 2.5}); D.forEach(p => b.dot(p[0], p[1], {fill: C.acc2, r: 6}));
+      const [A, B] = Cq, v = [B[0] - A[0], B[1] - A[1]], Cc = [B[0] - v[1], B[1] + v[0]], Dd = [A[0] - v[1], A[1] + v[0]];
+      b.poly([A, B, Cc, Dd], {fill: 'rgba(42,157,143,.2)', color: C.acc, lw: 2.5}); [A, B].forEach(p => b.dot(p[0], p[1], {fill: C.acc, r: 6})); [Cc, Dd].forEach(p => b.dot(p[0], p[1], {fill: '#fff', color: C.acc, r: 5, lw: 2}));
+      b.text('desenho', -5.5, 4.3, {bold: true, color: C.acc2}); b.text('construção', 4, 4.3, {bold: true, color: C.acc});
+      const L = D.map((p, i) => D2(p, D[(i + 1) % 4])), angs = D.map((p, i) => angAt(D[(i + 3) % 4], p, D[(i + 1) % 4]));
+      const okD = L.every(x => Math.abs(x - L[0]) < 1e-6) && angs.every(x => Math.abs(x - 90) < .01);
+      out.innerHTML = `<b style="color:${C.acc2}">Desenho</b>: lados ${L.map(x => fmt(x, 2)).join('; ')}; ângulos ${angs.map(x => fmt(x, 0) + '°').join('; ')} → ${okD ? 'ainda é quadrado' : '<span class="bad">deixou de ser quadrado</span>'}<br>` +
+        `<b style="color:${C.acc}">Construção</b>: C e D são obtidos girando AB em 90°; arrastando A ou B, os quatro lados medem ${fmt(D2(A, B), 2)} e os ângulos são retos.<div class="hint">Os pontos brancos são dependentes: não podem ser arrastados.</div>`;
+    } else {
+      const f = x => a * (x - V[0]) ** 2 + V[1];
+      b.fn(f, {color: C.ink, lw: 2.5});
+      b.dot(V[0], V[1], {fill: C.blue, r: 7}); b.dot(V[0] + 2, V[1] + a * 4, {fill: C.purple, r: 6});
+      b.fn(x => eye[0] * x + eye[1], {color: C.acc2, lw: 2, dash: [8, 5]});
+      const y0 = f(T0), m = 2 * a * (T0 - V[0]);
+      b.fn(x => m * (x - T0) + y0, {color: C.acc, lw: 2});
+      b.dot(T0, y0, {fill: C.acc, r: 6});
+      const dmin = (() => { let best = 1e9; for (let x = -9; x <= 9; x += .01){ best = Math.min(best, f(x) - (eye[0] * x + eye[1])); } return best; })();
+      const touches = Math.abs(dmin) < .02;
+      out.innerHTML = `Arraste o vértice (azul) ou o ponto lilás, que muda a abertura.<br><b style="color:${C.acc}">Tangente construída</b> no ponto de abscissa ${fmt(T0, 1)}: sempre tangente.<br><b style="color:${C.acc2}">Tangente "no olho"</b> (tracejada): ${touches ? 'ainda parece tangente' : '<span class="bad">deixou de ser tangente</span>'}.`;
+    }
+  };
+  reset();
+});
+
+tab('coordenadas', 'Área pelas coordenadas',
+ 'A área de um polígono pode ser calculada pelas coordenadas dos vértices, somando os produtos cruzados <i>x<sub>i</sub>y</i><sub><i>i</i>+1</sub> - <i>x</i><sub><i>i</i>+1</sub><i>y<sub>i</sub></i> e dividindo por 2 (fórmula do laço). Arraste os vértices do terreno, que estão em metros.',
+ (ctl, stg) => {
+  let P = [[0, 0], [60, 0], [75, 40], [30, 55], [0, 35]];
+  button(btns(ctl), 'Terreno do exemplo', () => { P = [[0, 0], [60, 0], [75, 40], [30, 55], [0, 35]]; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.35});
+  b.view(-10, 90, -8, 65);
+  P.forEach((_, i) => b.handle(() => P[i], (x, y) => { P[i] = [clamp(snap(x, 5), -5, 85), clamp(snap(y, 5), -5, 60)]; }, {r: 14}));
+  b.onDraw = () => {
+    b.rect(-10, -8, 100, 73, {fill: '#eef3e6', stroke: null}); b.grid(5, '#dde6d0'); b.axes({step: 10, xl: 'x (m)', yl: 'y (m)'});
+    const ok = simple(P);
+    b.poly(P, {fill: ok ? 'rgba(76,154,42,.3)' : 'rgba(192,57,43,.2)', color: ok ? '#3f7d20' : C.red, lw: 2.5});
+    P.forEach((p, i) => { b.dot(p[0], p[1], {fill: C.ink, r: 6}); b.text(`(${p[0]}; ${p[1]})`, p[0], p[1], {dy: -14, size: 11, bg: 'rgba(255,255,255,.8)'}); });
+    const terms = P.map((p, i) => { const q = P[(i + 1) % P.length]; return [p, q, p[0] * q[1] - q[0] * p[1]]; }), S = terms.reduce((s, t) => s + t[2], 0);
+    out.innerHTML = (ok ? '' : '<span class="bad">Os lados se cruzam: a fórmula exige um polígono simples.</span><br>') + terms.map(([p, q, v]) => `${p[0]} · ${q[1]} - ${q[0]} · ${p[1]} = ${fmt(v, 0)}`).join('<br>') +
+      `<br>Soma: ${fmt(S, 0)}<br><span class="big">A = |${fmt(S, 0)}| / 2 = ${fmt(Math.abs(S) / 2, 1)} m²</span>`;
+  };
+  b.draw();
+});
+
+tab('escala', 'Plantas, maquetes e escala',
+ 'Em uma escala 1 : <i>n</i>, cada medida real é dividida por <i>n</i>. Os comprimentos ficam <i>n</i> vezes menores e as áreas, <i>n</i>² vezes menores. Escolha as medidas reais e a escala e veja se a planta cabe em uma folha A4.',
+ (ctl, stg) => {
+  const sw = slider(ctl, {label: 'Comprimento real', min: 2, max: 40, step: 0.5, value: 12, fmt: v => fmt(v, 1) + ' m'}, () => b.draw());
+  const sh = slider(ctl, {label: 'Largura real', min: 2, max: 30, step: 0.5, value: 8, fmt: v => fmt(v, 1) + ' m'}, () => b.draw());
+  const se = select(ctl, 'Escala', [['20', '1 : 20'], ['50', '1 : 50'], ['100', '1 : 100'], ['200', '1 : 200']], () => b.draw(), '50');
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.45});
+  b.onDraw = () => {
+    const n = +se.value, w = sw.v * 100 / n, hh = sh.v * 100 / n, fits = (w <= 27.7 && hh <= 19) || (w <= 19 && hh <= 27.7);
+    b.view(-2, 32, -2, 23);
+    b.rect(0, 0, 29.7, 21, {fill: '#fff', color: C.muted, lw: 1.2}); b.text('folha A4 (29,7 cm × 21 cm)', 14.85, 21.8, {size: 11, color: C.muted});
+    for (let x = 0; x <= 29.7; x += 1) b.line(x, 0, x, 21, {color: '#f1ede4', lw: .8}); for (let y = 0; y <= 21; y += 1) b.line(0, y, 29.7, y, {color: '#f1ede4', lw: .8});
+    b.rect(1, 1, Math.min(w, 32), Math.min(hh, 23), {fill: fits ? 'rgba(42,157,143,.25)' : 'rgba(192,57,43,.2)', color: fits ? C.acc : C.red, lw: 2.5});
+    b.text(fmt(w, 1) + ' cm', 1 + Math.min(w, 29) / 2, .4, {bold: true}); b.text(fmt(hh, 1) + ' cm', 1.4 + Math.min(w, 28), 1 + Math.min(hh, 20) / 2, {bold: true, align: 'left'});
+    out.innerHTML = `Na escala 1 : ${n}:<br>${fmt(sw.v * 100, 0)} cm / ${n} = <b>${fmt(w, 2)} cm</b><br>${fmt(sh.v * 100, 0)} cm / ${n} = <b>${fmt(hh, 2)} cm</b><br>Área real: ${fmt(sw.v * sh.v, 2)} m²; área na planta: ${fmt(w * hh, 1)} cm²<br>Razão entre as áreas: 1 : ${fmt(n * n, 0)}<br>` +
+      (fits ? '<span class="ok">Cabe em uma folha A4, com margem de 1 cm.</span>' : '<span class="bad">Não cabe em uma folha A4: escolha uma escala menor.</span>');
+  };
+  b.draw();
+});
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transformações geométricas</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Transformações geométricas</h1>
+<p>Isometrias, homotetias, mosaicos, frisos, azulejos, coordenadas e projeções cartográficas.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Transformações geométricas ===== */
+const T2 = {
+  mid: (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2],
+  rot: (p, c, a) => [c[0] + (p[0] - c[0]) * Math.cos(a) - (p[1] - c[1]) * Math.sin(a), c[1] + (p[0] - c[0]) * Math.sin(a) + (p[1] - c[1]) * Math.cos(a)],
+  refl: (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy), f = [a[0] + t * dx, a[1] + t * dy]; return [2 * f[0] - p[0], 2 * f[1] - p[1]]; },
+  area: P => { let s = 0; for (let i = 0; i < P.length; i++){ const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length]; s += x1 * y2 - x2 * y1; } return s / 2; }
+};
+const FLAG = [[0, 0], [.6, 0], [.6, 1.6], [1.6, 1.6], [1.6, 2.2], [.6, 2.2], [.6, 2.6], [0, 2.6]]; // letra F (assimétrica)
+const sn = (v, s = .5) => Math.round(v / s) * s;
+function lineThrough(b, p, q, s){ const dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1; b.line(p[0] - dx / L * 40, p[1] - dy / L * 40, p[0] + dx / L * 40, p[1] + dy / L * 40, s); }
+
+tab('isometrias', 'Isometrias e composição',
+ 'Translação, reflexão e rotação são isometrias: preservam distâncias e ângulos. Escolha a transformação e arraste os elementos que a definem (vetor, eixo ou centro). Na composição, duas reflexões seguidas equivalem a uma translação (eixos paralelos) ou a uma rotação de ângulo igual ao dobro do ângulo entre os eixos (eixos concorrentes).',
+ (ctl, stg) => {
+  const tsel = select(ctl, 'Transformação', [['t', 'Translação'], ['r', 'Reflexão em uma reta'], ['o', 'Rotação em torno de um ponto'], ['c', 'Composição de duas reflexões']], () => setup());
+  const sa = slider(ctl, {label: 'Ângulo de rotação', min: -180, max: 180, step: 15, value: 90, fmt: v => v + '°'}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.45});
+  b.view(-8, 8, -5.5, 5.5);
+  const S = {v: [[-5, -3], [-1, -1]], r: [[0, -4], [1, 4]], o: [1, 0], r1: [[-1, -4], [-1, 4]], r2: [[1.5, -4], [1.5, 4]]};
+  const fig = () => FLAG.map(p => [p[0] - 5, p[1] - 1]);
+  function setup(){
+    sa.wrap.style.display = tsel.value === 'o' ? '' : 'none';
+    b.handles = []; const m = tsel.value, H = (get, set) => b.handle(get, set, {r: 13});
+    if (m === 't') S.v.forEach((_, i) => H(() => S.v[i], (x, y) => { S.v[i] = [sn(x), sn(y)]; }));
+    if (m === 'r') S.r.forEach((_, i) => H(() => S.r[i], (x, y) => { S.r[i] = [sn(x), sn(y)]; }));
+    if (m === 'o') H(() => S.o, (x, y) => { S.o = [sn(x), sn(y)]; });
+    if (m === 'c') ['r1', 'r2'].forEach(k => S[k].forEach((_, i) => H(() => S[k][i], (x, y) => { S[k][i] = [sn(x), sn(y)]; })));
+    b.draw();
+  }
+  b.onDraw = () => {
+    b.grid(1); const F = fig(), m = tsel.value; let G, txt = '';
+    const st0 = {fill: 'rgba(58,110,165,.35)', color: C.blue, lw: 2}, st1 = {fill: 'rgba(231,111,81,.4)', color: C.acc2, lw: 2};
+    if (m === 't'){
+      const [p, q] = S.v, v = [q[0] - p[0], q[1] - p[1]]; G = F.map(z => [z[0] + v[0], z[1] + v[1]]);
+      b.arrow(p[0], p[1], q[0], q[1], {color: C.purple, lw: 2.5}); b.dot(p[0], p[1], {fill: C.purple, r: 6}); b.dot(q[0], q[1], {fill: C.purple, r: 6});
+      txt = `Vetor v = (${fmt(v[0], 1)}; ${fmt(v[1], 1)})<br>Cada ponto se desloca na mesma direção, sentido e distância (${fmt(Math.hypot(...v), 2)}).<br>A orientação é mantida.`;
+    } else if (m === 'r'){
+      const [p, q] = S.r; G = F.map(z => T2.refl(z, p, q)); lineThrough(b, p, q, {color: C.purple, lw: 2});
+      b.dot(p[0], p[1], {fill: C.purple, r: 6}); b.dot(q[0], q[1], {fill: C.purple, r: 6});
+      F.forEach((z, i) => b.line(z[0], z[1], G[i][0], G[i][1], {color: C.line, lw: 1, dash: [3, 3]}));
+      txt = 'O eixo é a mediatriz do segmento que liga cada ponto à sua imagem.<br><b>A orientação se inverte</b> (a letra F aparece espelhada).';
+    } else if (m === 'o'){
+      const a = sa.v * Math.PI / 180; G = F.map(z => T2.rot(z, S.o, a));
+      b.dot(S.o[0], S.o[1], {fill: C.purple, r: 7}); b.text('O', S.o[0], S.o[1], {dx: -12, dy: 12, bold: true});
+      b.line(S.o[0], S.o[1], F[0][0], F[0][1], {color: C.line, lw: 1.2, dash: [4, 3]}); b.line(S.o[0], S.o[1], G[0][0], G[0][1], {color: C.line, lw: 1.2, dash: [4, 3]});
+      txt = `Rotação de ${sa.v}° ${sa.v > 0 ? 'no sentido anti-horário' : sa.v < 0 ? 'no sentido horário' : ''} em torno de O.` + (Math.abs(sa.v) === 180 ? '<br>Rotação de 180°: simetria central.' : '') + '<br>A orientação é mantida.';
+    } else {
+      const [p1, q1] = S.r1, [p2, q2] = S.r2, M = F.map(z => T2.refl(z, p1, q1)); G = M.map(z => T2.refl(z, p2, q2));
+      lineThrough(b, p1, q1, {color: C.purple, lw: 2}); lineThrough(b, p2, q2, {color: C.gold, lw: 2});
+      [p1, q1].forEach(z => b.dot(z[0], z[1], {fill: C.purple, r: 6})); [p2, q2].forEach(z => b.dot(z[0], z[1], {fill: C.gold, r: 6}));
+      b.poly(M, {fill: 'rgba(123,94,167,.18)', color: C.purple, lw: 1.5, dash: [5, 4]});
+      const u = [q1[0] - p1[0], q1[1] - p1[1]], w = [q2[0] - p2[0], q2[1] - p2[1]], cr = u[0] * w[1] - u[1] * w[0];
+      if (Math.abs(cr) < 1e-9){ const v = [G[0][0] - F[0][0], G[0][1] - F[0][1]]; txt = `Eixos paralelos: o resultado é uma <b>translação</b> de vetor (${fmt(v[0], 2)}; ${fmt(v[1], 2)}), cujo comprimento (${fmt(Math.hypot(...v), 2)}) é o dobro da distância entre os eixos.`; }
+      else { let ang = (Math.atan2(w[1], w[0]) - Math.atan2(u[1], u[0])) * 180 / Math.PI; ang = ((ang + 540) % 360) - 180; if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
+        const t = ((p2[0] - p1[0]) * w[1] - (p2[1] - p1[1]) * w[0]) / cr, X = [p1[0] + t * u[0], p1[1] + t * u[1]]; b.dot(X[0], X[1], {fill: C.ink, r: 6});
+        txt = `Eixos concorrentes, formando ${fmt(Math.abs(ang), 1)}°: o resultado é uma <b>rotação</b> de ${fmt(Math.abs(2 * ang), 1)}° em torno do ponto de encontro dos eixos.`; }
+      txt += '<br>A imagem intermediária (tracejada) está espelhada; a final, não.';
+    }
+    b.poly(F, st0); b.poly(G, st1);
+    out.innerHTML = txt + '<div class="hint">Figura original em azul, imagem em laranja.</div>';
+  };
+  setup();
+});
+
+tab('homotetia', 'Homotetia',
+ 'Na homotetia de centro O e razão <i>k</i>, cada ponto P vai para P\' na reta OP, com OP\' = |<i>k</i>| · OP. Arraste o centro O e mova a razão. Com <i>k</i> negativo, a imagem fica do outro lado do centro, invertida. Os comprimentos ficam multiplicados por |<i>k</i>| e a área por <i>k</i>².',
+ (ctl, stg) => {
+  const sk = slider(ctl, {label: 'Razão <i>k</i>', min: -3, max: 3, step: 0.25, value: 2, fmt: v => fmt(v, 2)}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.45});
+  b.view(-9, 9, -6, 6);
+  let O = [-5, -3];
+  const P = [[-3, -2], [-1, -2], [-1, -.5], [-2.2, .4], [-3, -.5]];
+  b.handle(() => O, (x, y) => { O = [sn(x), sn(y)]; }, {r: 14});
+  b.onDraw = () => {
+    b.grid(1); const k = sk.v, G = P.map(p => [O[0] + k * (p[0] - O[0]), O[1] + k * (p[1] - O[1])]);
+    P.forEach((p, i) => { b.line(O[0], O[1], G[i][0], G[i][1], {color: C.line, lw: 1.2, dash: [4, 3]}); b.line(O[0], O[1], p[0], p[1], {color: C.line, lw: 1.2, dash: [4, 3]}); });
+    b.poly(P, {fill: 'rgba(58,110,165,.35)', color: C.blue, lw: 2}); b.poly(G, {fill: 'rgba(231,111,81,.35)', color: C.acc2, lw: 2});
+    b.dot(O[0], O[1], {fill: C.ink, r: 7}); b.text('O', O[0], O[1], {dx: -12, dy: 12, bold: true});
+    const A = Math.abs(T2.area(P));
+    out.innerHTML = `k = ${fmt(k, 2)}: ${k === 0 ? 'toda a figura vai para o centro' : Math.abs(k) > 1 ? 'ampliação' : Math.abs(k) < 1 ? 'redução' : 'mesmo tamanho'}${k < 0 ? ', com a figura invertida em relação a O' : ''}<br>` +
+      `Comprimentos × ${fmt(Math.abs(k), 2)}<br>Área: ${fmt(A, 2)} → <b>${fmt(A * k * k, 2)}</b> (× ${fmt(k * k, 4)})`;
+  };
+  b.draw();
+});
+
+tab('mosaico', 'Mosaico com peça deformada',
+ 'Partindo de um quadrado, deforme um lado arrastando os pontos laranja (lado esquerdo) e azuis (lado de baixo). O recorte de cada lado é transladado para o lado oposto, e a peça resultante cobre o plano sem buracos nem sobreposições, como nos mosaicos de Escher.',
+ (ctl, stg) => {
+  let L = [[-.25, .3], [.2, .7]], B = [[.35, .2], [.7, -.2]];
+  button(btns(ctl), 'Recomeçar', () => { L = [[0, .33], [0, .67]]; B = [[.33, 0], [.67, 0]]; b.draw(); });
+  const cg = check(ctl, 'Mostrar a grade de quadrados', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.45});
+  const s = 2.2, ox = -1.1, oy = -1.1;
+  b.view(-6.5, 6.5, -4.5, 4.5);
+  L.forEach((_, i) => b.handle(() => [ox + L[i][0] * s, oy + L[i][1] * s], (x, y) => { L[i] = [clamp((x - ox) / s, -.45, .45), clamp((y - oy) / s, .05, .95)]; }, {r: 12}));
+  B.forEach((_, i) => b.handle(() => [ox + B[i][0] * s, oy + B[i][1] * s], (x, y) => { B[i] = [clamp((x - ox) / s, .05, .95), clamp((y - oy) / s, -.45, .45)]; }, {r: 12}));
+  function tile(){ // contorno da peça em coordenadas unitárias
+    const bottom = [[0, 0], ...B, [1, 0]], right = [[1, 0], ...L.map(p => [p[0] + 1, p[1]]), [1, 1]], top = [[1, 1], ...B.slice().reverse().map(p => [p[0], p[1] + 1]), [0, 1]], left = [[0, 1], ...L.slice().reverse(), [0, 0]];
+    return [...bottom, ...right.slice(1), ...top.slice(1), ...left.slice(1, -1)];
+  }
+  b.onDraw = () => {
+    const T = tile();
+    for (let i = -4; i <= 4; i++) for (let j = -3; j <= 3; j++){
+      const col = (i + j) % 2 === 0 ? 'rgba(42,157,143,.45)' : 'rgba(233,196,106,.6)';
+      b.poly(T.map(p => [ox + (p[0] + i) * s, oy + (p[1] + j) * s]), {fill: (i === 0 && j === 0) ? 'rgba(231,111,81,.55)' : col, color: '#fff', lw: 1.2});
+    }
+    if (cg.checked) for (let i = -4; i <= 4; i++) for (let j = -3; j <= 3; j++) b.rect(ox + i * s, oy + j * s, s, s, {color: 'rgba(31,42,55,.25)', lw: 1, dash: [3, 4]});
+    L.forEach(p => b.dot(ox + p[0] * s, oy + p[1] * s, {fill: C.acc2, r: 6})); B.forEach(p => b.dot(ox + p[0] * s, oy + p[1] * s, {fill: C.blue, r: 6}));
+    out.innerHTML = 'A peça em destaque tem a mesma área do quadrado: o que sai de um lado entra no lado oposto.<br>Todas as cópias são obtidas por <b>translações</b> da peça.';
+  };
+  b.draw();
+});
+
+tab('frisos', 'Frisos e rosáceas',
+ 'Um friso é uma faixa em que um motivo se repete por translação em uma direção; as outras isometrias presentes distinguem os sete tipos de friso. Uma rosácea repete um motivo por rotações em torno de um centro, com ou sem eixos de simetria.',
+ (ctl, stg) => {
+  const tipo = select(ctl, 'Padrão', [['f1', 'Friso 1: só translação'], ['f2', 'Friso 2: reflexão em eixo horizontal'], ['f3', 'Friso 3: reflexões em eixos verticais'], ['f4', 'Friso 4: meia-volta (rotação de 180°)'], ['f5', 'Friso 5: reflexão deslizante'], ['f6', 'Friso 6: reflexões verticais e meia-volta'], ['f7', 'Friso 7: reflexões horizontal e verticais'], ['r', 'Rosácea']], () => { sr.wrap.style.display = cr.parentNode.style.display = tipo.value === 'r' ? '' : 'none'; b.draw(); });
+  const sr = slider(ctl, {label: 'Ordem da rosácea', min: 2, max: 12, value: 6}, () => b.draw());
+  const cr = check(ctl, 'Rosácea com eixos de simetria', false, () => b.draw());
+  sr.wrap.style.display = cr.parentNode.style.display = 'none';
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 2});
+  const M = [[0, .1], [.55, .1], [.75, .45], [.35, .45], [.25, .85], [0, .85]].map(p => [p[0] * 1.25, p[1] * 1.1]); // motivo assimétrico na metade superior
+  const mx = p => [-p[0], p[1]], my = p => [p[0], -p[1]], hv = p => [-p[0], -p[1]];
+  const INFO = {f1: 'translação', f2: 'translação e reflexão no eixo horizontal (e, por consequência, reflexão deslizante)', f3: 'translação e reflexões em eixos verticais', f4: 'translação e rotações de 180°', f5: 'translação e reflexão deslizante', f6: 'translação, reflexões em eixos verticais, rotações de 180° e reflexão deslizante', f7: 'translação, reflexões horizontal e verticais e rotações de 180°'};
+  b.onDraw = () => {
+    const t = tipo.value, st = {fill: 'rgba(42,157,143,.55)', color: C.acc, lw: 1.5};
+    if (t === 'r'){
+      b.view(-3, 3, -1.6, 1.6); const n = sr.v, R = [[.12, 0], [.9, .1], [1.2, .35], [.7, .3], [.45, .45]];
+      for (let k = 0; k < n; k++){ const a = 2 * Math.PI * k / n; b.poly(R.map(p => T2.rot(p, [0, 0], a)), {fill: PAL[k % 2 ? 1 : 0] + '99', color: C.ink, lw: 1}); if (cr.checked) b.poly(R.map(p => T2.rot([p[0], -p[1]], [0, 0], a)), {fill: PAL[k % 2 ? 1 : 0] + '99', color: C.ink, lw: 1}); }
+      b.dot(0, 0, {fill: C.ink, r: 4});
+      out.innerHTML = `Rosácea de ordem ${n}: invariante por rotações de 360°/${n} = ${fmt(360 / n, 2)}°` + (cr.checked ? ` e por ${n} eixos de simetria.` : ', sem eixos de simetria.');
+      return;
+    }
+    b.view(-.3, 12.3, -1.8, 1.8);
+    b.rect(-.3, -1.05, 12.6, 2.1, {fill: '#fbf6ea', stroke: null}); b.line(-.3, 0, 12.3, 0, {color: C.line, lw: 1, dash: [4, 4]});
+    for (let i = 0; i < 6; i++){
+      const x0 = i * 2 + .2, put = (f, dx = 0) => b.poly(M.map(p => { const q = f(p); return [x0 + .8 + dx + q[0], q[1]]; }), st);
+      const id = p => p;
+      if (t === 'f1'){ put(id); put(id, 1); }
+      if (t === 'f2'){ put(id); put(my); put(id, 1); put(my, 1); }
+      if (t === 'f3'){ put(id); put(mx, 1.6); }
+      if (t === 'f4'){ put(id); put(hv, 1.6); }
+      if (t === 'f5'){ put(id); put(my, 1); }
+      if (t === 'f6'){ put(id); put(mx, 1.6); put(hv, 1.6); put(my); }
+      if (t === 'f7'){ put(id); put(my); put(mx, 1.6); put(hv, 1.6); }
+    }
+    out.innerHTML = `Isometrias que deixam o friso invariante: <b>${INFO[t]}</b>.<div class="hint">O mesmo motivo gera todos os tipos; só mudam as isometrias usadas para repeti-lo. Considere a faixa infinita nos dois sentidos.</div>`;
+  };
+  b.draw();
+});
+
+tab('azulejos', 'Do azulejo ao painel',
+ 'Pinte as casas do azulejo (clique para colorir ou apagar). O azulejo é girado de 90° em 90° para formar um módulo de quatro peças, e o módulo é transladado em duas direções para formar o painel.',
+ (ctl, stg) => {
+  const N = 6; let G = Array.from({length: N}, (_, i) => Array.from({length: N}, (_, j) => (i * i + j * j < 13) ? 1 : 0));
+  const cor = select(ctl, 'Cor do pincel', [['1', 'azul'], ['2', 'amarelo'], ['0', 'branco (apagar)']], null);
+  const bb = btns(ctl);
+  button(bb, 'Quarto de círculo', () => { G = G.map((r, i) => r.map((_, j) => (i * i + j * j < 13) ? 1 : 0)); draw(); });
+  button(bb, 'Diagonal', () => { G = G.map((r, i) => r.map((_, j) => i + j < N - 1 ? 1 : (i + j === N - 1 ? 2 : 0))); draw(); });
+  button(bb, 'Limpar', () => { G = G.map(r => r.map(() => 0)); draw(); });
+  const out = output(ctl);
+  out.innerHTML = 'À esquerda, o azulejo; no centro, o módulo (rotações de 0°, 90°, 180° e 270°); à direita, o painel (translações do módulo).';
+  const b = stageBoard(stg, {aspect: 2.3});
+  const COL = ['#fffdf8', '#2f5d8a', '#e9b949'];
+  b.view(-.5, 23.5, -.5, 10.5);
+  b.onClick = (x, y) => { const i = Math.floor(x / (6 / N) - 0), j = Math.floor((y - 2) / (6 / N)); if (x < 0 || x >= 6 || y < 2 || y >= 8) return; G[i][j] = +cor.value; draw(); };
+  function tileAt(x0, y0, s, rotq){
+    const c = s / N;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++){
+      let a = i, bq = j; for (let k = 0; k < rotq; k++){ const t = a; a = N - 1 - bq; bq = t; }
+      b.rect(x0 + a * c, y0 + bq * c, c, c, {fill: COL[G[i][j]], stroke: null});
+    }
+    b.rect(x0, y0, s, s, {color: '#c9c2b2', lw: 1});
+  }
+  function module(x0, y0, s){ tileAt(x0 + s, y0 + s, s, 0); tileAt(x0, y0 + s, s, 1); tileAt(x0, y0, s, 2); tileAt(x0 + s, y0, s, 3); }
+  function draw(){
+    b.onDraw = () => {
+      tileAt(0, 2, 6, 0); for (let k = 1; k < N; k++){ b.line(k, 2, k, 8, {color: '#e5dfd2', lw: .8}); b.line(0, 2 + k, 6, 2 + k, {color: '#e5dfd2', lw: .8}); }
+      b.text('azulejo', 3, 1.3, {size: 12, color: C.muted});
+      module(7.2, 2.5, 2.5); b.text('módulo', 9.7, 1.3, {size: 12, color: C.muted});
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) module(13.5 + i * 2.5, j * 2.5, 1.25);
+      b.text('painel', 18.5, -.25, {size: 12, color: C.muted});
+    };
+    b.draw();
+  }
+  draw();
+});
+
+tab('coordenadas', 'Transformações em coordenadas',
+ 'O triângulo ABC tem vértices A(1, 1), B(4, 1) e C(1, 3), que podem ser arrastados. Escolha uma transformação e veja as coordenadas da imagem e a regra que as produz.',
+ (ctl, stg) => {
+  let P = [[1, 1], [4, 1], [1, 3]];
+  const tsel = select(ctl, 'Transformação', [['t', 'Translação (x + a, y + b)'], ['rx', 'Reflexão no eixo x'], ['ry', 'Reflexão no eixo y'], ['r90', 'Rotação de 90° em torno da origem'], ['r180', 'Rotação de 180° em torno da origem'], ['h', 'Homotetia de centro na origem']], () => sw());
+  const sa = slider(ctl, {label: '<i>a</i>', min: -6, max: 6, value: 3}, () => b.draw());
+  const sb = slider(ctl, {label: '<i>b</i>', min: -6, max: 6, value: -5}, () => b.draw());
+  const sk = slider(ctl, {label: 'Razão <i>k</i>', min: -2, max: 2, step: 0.5, value: 2, fmt: v => fmt(v, 1)}, () => b.draw());
+  button(btns(ctl), 'Triângulo do exemplo', () => { P = [[1, 1], [4, 1], [1, 3]]; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.2});
+  b.view(-9, 9, -7.5, 7.5);
+  P.forEach((_, i) => b.handle(() => P[i], (x, y) => { P[i] = [clamp(Math.round(x), -8, 8), clamp(Math.round(y), -7, 7)]; }, {r: 13}));
+  function sw(){ const t = tsel.value; sa.wrap.style.display = sb.wrap.style.display = t === 't' ? '' : 'none'; sk.wrap.style.display = t === 'h' ? '' : 'none'; b.draw(); }
+  const F = {t: (p) => [p[0] + sa.v, p[1] + sb.v], rx: p => [p[0], -p[1]], ry: p => [-p[0], p[1]], r90: p => [-p[1], p[0]], r180: p => [-p[0], -p[1]], h: p => [sk.v * p[0], sk.v * p[1]]};
+  const RULE = {t: () => `(x, y) → (x ${sa.v < 0 ? '- ' + (-sa.v) : '+ ' + sa.v}, y ${sb.v < 0 ? '- ' + (-sb.v) : '+ ' + sb.v})`, rx: () => '(x, y) → (x, -y)', ry: () => '(x, y) → (-x, y)', r90: () => '(x, y) → (-y, x)', r180: () => '(x, y) → (-x, -y)', h: () => `(x, y) → (${fmt(sk.v, 1)}x, ${fmt(sk.v, 1)}y)`};
+  b.onDraw = () => {
+    b.grid(1); b.axes({step: 1, xl: 'x', yl: 'y'});
+    const f = F[tsel.value], G = P.map(f);
+    b.poly(P, {fill: 'rgba(58,110,165,.3)', color: C.blue, lw: 2}); b.poly(G, {fill: 'rgba(231,111,81,.3)', color: C.acc2, lw: 2});
+    'ABC'.split('').forEach((l, i) => { b.dot(P[i][0], P[i][1], {fill: C.blue, r: 6}); b.text(l, P[i][0], P[i][1], {dx: -10, dy: -10, bold: true, color: C.blue}); b.dot(G[i][0], G[i][1], {fill: C.acc2, r: 5}); b.text(l + "'", G[i][0], G[i][1], {dx: 12, dy: -10, bold: true, color: C.acc2}); });
+    const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]), A0 = Math.abs(T2.area(P)), A1 = Math.abs(T2.area(G));
+    out.innerHTML = `<b>${RULE[tsel.value]()}</b><table><tr><th>vértice</th><th>original</th><th>imagem</th></tr>${'ABC'.split('').map((l, i) => `<tr><td>${l}</td><td>(${P[i][0]}; ${P[i][1]})</td><td>(${fmt(G[i][0], 1)}; ${fmt(G[i][1], 1)})</td></tr>`).join('')}</table>` +
+      `Lados: ${[0, 1, 2].map(i => fmt(d(P[i], P[(i + 1) % 3]), 2)).join('; ')} → ${[0, 1, 2].map(i => fmt(d(G[i], G[(i + 1) % 3]), 2)).join('; ')}<br>Área: ${fmt(A0, 2)} → ${fmt(A1, 2)}`;
+  };
+  sw();
+});
+
+tab('mapas', 'Projeções cartográficas',
+ 'Nenhum mapa plano representa a superfície esférica sem deformações. Arraste o círculo (que, na Terra, tem sempre o mesmo raio) e veja como ele aparece em três projeções cilíndricas: a equidistante, a de Mercator (que preserva os ângulos) e a equivalente de Lambert (que preserva as áreas).',
+ (ctl, stg) => {
+  const proj = select(ctl, 'Projeção', [['e', 'Equidistante (equirretangular)'], ['m', 'Mercator (conforme)'], ['l', 'Equivalente de Lambert']], () => b.draw(), 'm');
+  const sr = slider(ctl, {label: 'Raio do círculo na Terra', min: 300, max: 1500, step: 100, value: 1000, fmt: v => fmt(v, 0) + ' km'}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6});
+  let c = [20, 55]; // longitude, latitude do centro (graus)
+  const R = 6371, D = Math.PI / 180;
+  const PJ = {e: (lo, la) => [lo * D, la * D], m: (lo, la) => [lo * D, Math.log(Math.tan(Math.PI / 4 + clamp(la, -85, 85) * D / 2))], l: (lo, la) => [lo * D, Math.sin(la * D)]};
+  const inv = {e: (x, y) => [x / D, y / D], m: (x, y) => [x / D, (2 * Math.atan(Math.exp(y)) - Math.PI / 2) / D], l: (x, y) => [x / D, Math.asin(clamp(y, -1, 1)) / D]};
+  b.view(-Math.PI - .1, Math.PI + .1, -3.2, 3.2);
+  b.handle(() => PJ[proj.value](c[0], c[1]), (x, y) => { const q = inv[proj.value](x, y); c = [clamp(q[0], -170, 170), clamp(q[1], -75, 75)]; }, {r: 16});
+  function circle(lo0, la0, r){ const d = r / R, pts = []; const la = la0 * D, lo = lo0 * D;
+    for (let k = 0; k <= 120; k++){ const th = 2 * Math.PI * k / 120; const lat = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(th)); const lon = lo + Math.atan2(Math.sin(th) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(lat)); pts.push([lon / D, lat / D]); } return pts; }
+  b.onDraw = () => {
+    const p = proj.value, f = PJ[p];
+    const top = f(0, 85)[1]; b.view(-Math.PI - .1, Math.PI + .1, -Math.max(top, 1.6) - .1, Math.max(top, 1.6) + .1);
+    b.rect(-Math.PI, -f(0, 85)[1], 2 * Math.PI, 2 * f(0, 85)[1], {fill: '#dcecf4', stroke: null});
+    for (let la = -80; la <= 80; la += 20){ const y = f(0, la)[1]; b.line(-Math.PI, y, Math.PI, y, {color: la === 0 ? C.blue : '#b9d3e2', lw: la === 0 ? 1.5 : 1}); b.text(la + '°', -Math.PI + .05, y, {size: 10, color: C.muted, align: 'left', dy: -7}); }
+    for (let lo = -180; lo <= 180; lo += 30){ const x = lo * D; b.line(x, -f(0, 85)[1], x, f(0, 85)[1], {color: '#b9d3e2', lw: 1}); }
+    [[-150, 0], [-150, 30], [-150, 60], [-150, -30], [-150, -60], [150, 0], [150, 60], [150, -60]].forEach(([lo, la]) => b.poly(circle(lo, la, sr.v).map(q => f(q[0], q[1])), {fill: 'rgba(123,94,167,.25)', color: C.purple, lw: 1.2}));
+    b.poly(circle(c[0], c[1], sr.v).map(q => f(q[0], q[1])), {fill: 'rgba(231,111,81,.45)', color: C.acc2, lw: 2});
+    const sec = 1 / Math.cos(c[1] * D);
+    const kx = sec, ky = p === 'e' ? 1 : p === 'm' ? sec : Math.cos(c[1] * D);
+    out.innerHTML = `Centro do círculo: latitude ${fmt(Math.abs(c[1]), 0)}° ${c[1] >= 0 ? 'N' : 'S'}<br>Escala leste-oeste: × ${fmt(kx, 2)}<br>Escala norte-sul: × ${fmt(ky, 2)}<br>Área representada: × <b>${fmt(kx * ky, 2)}</b><br>` +
+      (p === 'm' ? 'Mercator: as escalas são iguais nas duas direções (o círculo continua círculo), mas a área cresce com 1/cos² da latitude.' : p === 'l' ? 'Lambert: a área se mantém, mas o círculo vira uma elipse achatada.' : 'Equidistante: as distâncias norte-sul se mantêm; as leste-oeste se esticam.') +
+      '<div class="hint">Os círculos lilás, fixos, têm o mesmo raio na Terra e servem de comparação.</div>';
+  };
+  b.draw();
+});
+
+boot();
+</script>
+</body>
+</html>

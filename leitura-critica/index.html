@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitura crítica de gráficos e riscos</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Leitura crítica de gráficos e riscos</h1>
+<p>Como escolhas de escala, de imagem e de período mudam a impressão de um gráfico, e como interpretar testes diagnósticos e riscos.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Leitura crítica ===== */
+function lsq(P){ const n = P.length, mx = P.reduce((s, p) => s + p[0], 0) / n, my = P.reduce((s, p) => s + p[1], 0) / n; let a = 0, d = 0; P.forEach(([x, y]) => { a += (x - mx) * (y - my); d += (x - mx) ** 2; }); a /= d; return {a, b: my - a * mx}; }
+
+tab('eixo-truncado', 'Eixo truncado e escala',
+ 'O mesmo conjunto de dados pode dar impressões muito diferentes. Mova o início do eixo vertical e compare a razão entre as alturas visíveis das barras com a razão entre os valores. Em um gráfico de barras, o comprimento das barras só é proporcional aos valores quando o eixo começa em zero.',
+ (ctl, stg) => {
+  const SETS = {aprov: {nome: 'taxa de aprovação de uma escola (%, fictícia)', L: ['2023', '2024'], v: [82, 85], u: '%'}, vendas: {nome: 'vendas anuais de uma empresa (mil unidades, fictícias)', L: ['ano 1', 'ano 2', 'ano 3', 'ano 4'], v: [102, 103.5, 105, 107], u: ' mil'}};
+  const sel = select(ctl, 'Dados', Object.entries(SETS).map(([k, d]) => [k, d.nome]), () => { s0.setMax(Math.floor(Math.min(...S().v)) - 1); s0.v = Math.floor(Math.min(...S().v)) - 2; b.draw(); });
+  const tp = select(ctl, 'Tipo de gráfico', [['barras', 'barras'], ['linhas', 'linhas']], () => b.draw());
+  const s0 = slider(ctl, {label: 'Início do eixo vertical', min: 0, max: 81, value: 80}, () => b.draw());
+  const bb = btns(ctl); button(bb, 'Eixo a partir de zero', () => { s0.v = 0; b.draw(); }); button(bb, 'Eixo truncado', () => { s0.v = Math.floor(Math.min(...S().v)) - 2; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6, equal: false});
+  const S = () => SETS[sel.value];
+  b.onDraw = () => { const s = S(), y0 = s0.v, ym = Math.max(...s.v) * 1.04, n = s.v.length;
+    b.view(-.9, n - .3, y0 - (ym - y0) * .08, ym + (ym - y0) * .06);
+    chartAxes(b, {xticks: [], yticks: ticks(y0, ym, 6), fy: y => fmt(y, 1), x0: -.6, y0});
+    if (tp.value === 'barras') s.v.forEach((v, i) => { b.rect(i - .3, y0, .6, v - y0, {fill: C.acc, stroke: null}); b.text(fmt(v, 1) + s.u, i, v, {dy: -10, bold: true}); b.text(s.L[i], i, y0, {dy: 12, size: 12}); });
+    else { b.path(s.v.map((v, i) => [i, v]), {color: C.acc, lw: 3}); s.v.forEach((v, i) => { b.dot(i, v, {fill: C.acc, r: 6}); b.text(fmt(v, 1) + s.u, i, v, {dy: -14, bold: true}); b.text(s.L[i], i, y0, {dy: 12, size: 12}); }); }
+    if (y0 > 0) b.text('atenção: o eixo não começa em zero', -.5, ym + (ym - y0) * .02, {align: 'left', size: 12, color: C.acc2, bg: '#fff'});
+    const a = s.v[0], z = s.v[n - 1];
+    out.innerHTML = `Valores: de ${fmt(a, 1)} para ${fmt(z, 1)}<br>Razão entre os valores: ${fmt(z, 1)} / ${fmt(a, 1)} ≈ <b>${fmt(z / a, 3)}</b> (aumento de ${fmt(100 * (z / a - 1), 1)}%)<br>Razão entre as alturas visíveis: (${fmt(z, 1)} - ${y0}) / (${fmt(a, 1)} - ${y0}) ≈ <span class="big">${fmt((z - y0) / (a - y0), 2)}</span>` + (y0 > 0 ? '<div class="hint">A figura sugere um crescimento muito maior que o real. Em gráficos de linhas, não começar em zero pode ser aceitável, desde que a escala esteja clara para o leitor.</div>' : '<div class="hint">Com o eixo em zero, as alturas são proporcionais aos valores.</div>'); };
+  s0.v = 80; b.draw();
+});
+
+tab('pictograma', 'Pictogramas',
+ 'Se o lucro de uma empresa fictícia é multiplicado por k e o desenho é ampliado na razão k nas duas dimensões, a altura fica k vezes maior, mas a área fica k² vezes maior, e o leitor percebe um crescimento maior que o real. Na representação correta, a figura é repetida.',
+ (ctl, stg) => {
+  const sk = slider(ctl, {label: 'O lucro foi multiplicado por k', min: 1, max: 3, step: .5, value: 2, fmt: v => fmt(v, 1)}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.9});
+  function bag(x, y, s, alpha = 1){ // saco de dinheiro de altura s com base em (x, y)
+    const c = b.ctx; c.save(); c.globalAlpha = alpha; c.fillStyle = '#e9c46a'; c.strokeStyle = '#7a5c12'; c.lineWidth = 1.5;
+    const X = b.X(x), Y = b.Y(y), H = s * b.v.sy; c.beginPath(); c.ellipse(X, Y - H * .38, H * .38, H * .38, 0, 0, 2 * Math.PI); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(X - H * .12, Y - H * .74); c.lineTo(X - H * .2, Y - H * .95); c.lineTo(X + H * .2, Y - H * .95); c.lineTo(X + H * .12, Y - H * .74); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#7a5c12'; c.font = `600 ${H * .38}px Segoe UI`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('$', X, Y - H * .38); c.restore(); }
+  b.onDraw = () => { const k = sk.v, u = 1.6; b.view(-.5, 17, -1.6, 6.2);
+    b.text('enganoso: figura ampliada', 4, 5.8, {bold: true, color: C.acc2}); b.text('correto: figura repetida', 12.6, 5.8, {bold: true, color: C.acc});
+    bag(1, 0, u); bag(1.4 + u * .45 + k * u * .45, 0, k * u); b.line(-.3, 0, 8, 0, {color: C.line, lw: 1}); b.line(9, 0, 16.8, 0, {color: C.line, lw: 1});
+    b.text('antes', 1, -.5, {size: 12}); b.text('depois', 1.4 + u * .45 + k * u * .45, -.5, {size: 12});
+    bag(10, 0, u); const full = Math.floor(k), fr = k - full; for (let i = 0; i < full; i++) bag(12.2 + i * 1.5, 0, u); if (fr) { const c = b.ctx; c.save(); c.beginPath(); c.rect(b.X(12.2 + full * 1.5 - u * .4), 0, u * .8 * fr * b.v.sx, b.H); c.clip(); bag(12.2 + full * 1.5, 0, u); c.restore(); }
+    b.text('antes', 10, -.5, {size: 12}); b.text('depois', 12.2 + (full - 1) * .75, -.5, {size: 12});
+    b.text(`altura × ${fmt(k, 1)}, área × ${fmt(k * k, 2)}`, 4, -1.2, {size: 12, color: C.acc2}); b.text(`quantidade de figuras × ${fmt(k, 1)}`, 12.6, -1.2, {size: 12, color: C.acc}); };
+  const _d = b.draw.bind(b); b.draw = () => { _d(); const k = sk.v; out.innerHTML = `Lucro: × ${fmt(k, 1)}<br>Figura ampliada: altura × ${fmt(k, 1)}, área × <span class="big">${fmt(k * k, 2)}</span><div class="hint">Em figuras semelhantes de razão k, as áreas estão na razão k². Como o olho compara áreas, a figura ampliada exagera o crescimento.</div>`; };
+  b.draw();
+});
+
+tab('eixos-duplos', 'Dois eixos verticais',
+ 'Um gráfico com dois eixos verticais permite escolher livremente as duas escalas e fazer duas séries quaisquer parecerem fortemente relacionadas. Aqui, o número de usuários de um aplicativo cresce e o sono médio dos jovens diminui (dados fictícios). Mude as escalas dos dois eixos e veja o "cruzamento dramático" aparecer ou desaparecer.',
+ (ctl, stg) => {
+  const sMin = slider(ctl, {label: 'Início do eixo do sono (h)', min: 0, max: 7.2, step: .1, value: 7.2, fmt: v => fmt(v, 1)}, () => b.draw());
+  const sMax = slider(ctl, {label: 'Fim do eixo do sono (h)', min: 7.7, max: 12, step: .1, value: 7.7, fmt: v => fmt(v, 1)}, () => b.draw());
+  const sU = slider(ctl, {label: 'Fim do eixo de usuários (milhões)', min: 100, max: 500, step: 10, value: 100}, () => b.draw());
+  const bb = btns(ctl); button(bb, 'Versão dramática', () => { sMin.v = 7.2; sMax.v = 7.7; sU.v = 100; b.draw(); }); button(bb, 'Sono a partir de zero', () => { sMin.v = 0; sMax.v = 9; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false});
+  const anos = Array.from({length: 11}, (_, i) => 2014 + i), users = anos.map((_, i) => 5 + 9.5 * i + 1.2 * Math.sin(i)), sono = anos.map((_, i) => 7.6 - .035 * i + .02 * Math.sin(2 * i));
+  b.onDraw = () => { const a = sMin.v, z = sMax.v; b.view(-1.5, 11.5, -8, 108);
+    const U = sU.v; chartAxes(b, {xticks: [], yticks: [0, 20, 40, 60, 80, 100], fy: y => fmt(y * U / 100, 0) + ' mi', x0: 0, y0: 0});
+    anos.forEach((t, i) => { if (i % 2 === 0) b.text(String(t), i, 0, {dy: 12, size: 11}); });
+    const c = b.ctx; c.save(); c.fillStyle = C.acc2; c.font = '11px Segoe UI'; c.textAlign = 'left'; c.textBaseline = 'middle'; ticks(a, z, 5).forEach(v => { const y = (v - a) / (z - a) * 100; c.fillText(fmt(v, 2) + ' h', b.X(10.2), b.Y(y)); }); c.restore();
+    b.line(10, 0, 10, 100, {color: C.acc2, lw: 1.2});
+    b.path(users.map((u, i) => [i, u * 100 / U]), {color: C.blue, lw: 3}); b.path(sono.map((s, i) => [i, (s - a) / (z - a) * 100]), {color: C.acc2, lw: 3});
+    b.text('usuários do aplicativo (milhões)', .3, 104, {align: 'left', size: 12, color: C.blue, bold: true}); b.text('sono médio dos jovens (h)', 9.7, 104, {align: 'right', size: 12, color: C.acc2, bold: true}); };
+  const _d = b.draw.bind(b); b.draw = () => { _d(); out.innerHTML = `Sono: de ${fmt(sono[0], 2)} h para ${fmt(sono[10], 2)} h em dez anos (queda de ${fmt(100 * (1 - sono[10] / sono[0]), 1)}%)<br>Eixo do sono: de ${fmt(sMin.v, 1)} h a ${fmt(sMax.v, 1)} h<div class="hint">A escala de cada eixo é escolhida por quem faz o gráfico. Além disso, a coincidência temporal entre duas séries não prova que uma cause a outra.</div>`; };
+  b.draw();
+});
+
+tab('janela', 'Escolha seletiva do período',
+ 'Uma série simulada de anomalias de temperatura de 1980 a 2024 tem tendência de aumento, com oscilações de um ano para outro. Escolha o período mostrado: um recorte que começa em um ano excepcionalmente quente pode produzir uma reta de tendência decrescente e sugerir que "o aquecimento parou".',
+ (ctl, stg) => {
+  const sa = slider(ctl, {label: 'Ano inicial', min: 1980, max: 2020, value: 1980, fmt: String}, () => { if (sz.v - sa.v < 4) sz.v = sa.v + 4; b.draw(); });
+  const sz = slider(ctl, {label: 'Ano final', min: 1984, max: 2024, value: 2024, fmt: String}, () => { if (sz.v - sa.v < 4) sa.v = sz.v - 4; b.draw(); });
+  const bb = btns(ctl); button(bb, 'Série completa', () => { sa.v = 1980; sz.v = 2024; b.draw(); }); button(bb, 'Recorte 2016 a 2024', () => { sa.v = 2016; sz.v = 2024; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false});
+  const noise = [.05, -.08, .1, .02, -.12, -.04, .06, .12, .03, -.1, .08, -.02, -.15, -.06, .04, .1, -.07, .15, .02, -.05, .03, -.09, .07, .05, -.03, .09, -.06, .02, -.11, .04, .08, -.04, .01, .06, .12, .22, .38, .24, .08, .12, .1, -.02, .02, 0, .02];
+  const S = noise.map((e, i) => [1980 + i, .021 * i - .1 + e]);
+  b.onDraw = () => { const a = sa.v, z = sz.v, P = S.filter(p => p[0] >= a && p[0] <= z), f = lsq(P);
+    b.view(a - (z - a) * .1, z + (z - a) * .04, -.4, 1.35);
+    chartAxes(b, {xticks: ticks(a, z, 8).filter(Number.isInteger), yticks: [-.2, 0, .2, .4, .6, .8, 1, 1.2], fx: x => String(x), fy: y => fmt(y, 1) + ' °C', x0: a - (z - a) * .05, y0: -.4});
+    b.path(P, {color: C.muted, lw: 1.5}); P.forEach(p => b.dot(p[0], p[1], {fill: C.blue, r: 4, lw: 1}));
+    b.fn(x => f.a * x + f.b, {color: f.a >= 0 ? C.acc2 : C.acc, lw: 2.5}, a, z);
+    out.innerHTML = `Período: ${a} a ${z} (${P.length} anos)<br>Tendência da reta de ajuste: <span class="big">${f.a >= 0 ? '+' : ''}${fmt(f.a * 10, 2)} °C por década</span><div class="hint">Série simulada para fins didáticos. A tendência da série completa é de cerca de 0,23 °C por década; recortes curtos são muito sensíveis aos anos escolhidos no início e no fim.</div>`; };
+  b.draw();
+});
+
+tab('teste-diagnostico', 'Teste diagnóstico',
+ 'Uma doença atinge uma parte da população, e um exame a detecta com certa sensibilidade (positivo nos doentes) e especificidade (negativo nos sadios). Em frequências naturais, imagine 10 000 pessoas: o objeto mostra quantas têm exame positivo e, entre elas, quantas estão de fato doentes (valores fictícios).',
+ (ctl, stg) => {
+  const sp = slider(ctl, {label: 'Prevalência (doentes na população)', min: .1, max: 30, step: .1, value: 1, fmt: v => fmt(v, 1) + '%'}, () => b.draw());
+  const ss = slider(ctl, {label: 'Sensibilidade', min: 50, max: 100, step: .5, value: 90, fmt: v => fmt(v, 1) + '%'}, () => b.draw());
+  const se = slider(ctl, {label: 'Especificidade', min: 50, max: 100, step: .5, value: 95, fmt: v => fmt(v, 1) + '%'}, () => b.draw());
+  button(btns(ctl), 'Valores do exemplo: 1%, 90%, 95%', () => { sp.v = 1; ss.v = 90; se.v = 95; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.55});
+  b.onDraw = () => { const N = 10000, D = Math.round(N * sp.v / 100), VP = Math.round(D * ss.v / 100), FP = Math.round((N - D) * (1 - se.v / 100)), FN = D - VP, VN = N - D - FP;
+    b.view(-.5, 160, -2, 101);
+    // matriz 100 x 100: doentes primeiro (positivos verdadeiros, falsos negativos), depois sadios (falsos positivos, verdadeiros negativos)
+    const c = b.ctx, s = b.v.sx; c.save();
+    for (let i = 0; i < N; i++){ const col = Math.floor(i / 100), row = i % 100; let f; if (i < VP) f = '#d1495b'; else if (i < D) f = '#f2a7b1'; else if (i < D + FP) f = '#e9a23b'; else f = '#dfe7ef'; c.fillStyle = f; c.fillRect(b.X(col), b.Y(100 - row), s * .9, s * .9); }
+    c.restore();
+    const L = [['#d1495b', `doentes com exame positivo: ${VP}`], ['#f2a7b1', `doentes com exame negativo: ${FN}`], ['#e9a23b', `sadios com exame positivo: ${FP}`], ['#dfe7ef', `sadios com exame negativo: ${VN}`]];
+    L.forEach(([f, t], k) => { b.rect(104, 92 - k * 9, 4, 5, {fill: f, color: C.ink, lw: .8}); b.text(t, 110, 94.5 - k * 9, {align: 'left', size: 12}); });
+    b.text(`positivos: ${VP + FP}`, 104, 52, {align: 'left', size: 15, bold: true}); b.text(`doentes entre os positivos: ${VP}`, 104, 44, {align: 'left', size: 13});
+    b.text(`P(doente | positivo) = ${VP}/${VP + FP}`, 104, 34, {align: 'left', size: 13}); b.text(`≈ ${fmt(100 * VP / (VP + FP || 1), 1)}%`, 104, 25, {align: 'left', size: 26, bold: true, color: C.acc2});
+    out.innerHTML = `Em 10 000 pessoas:<br>doentes: ${D}; sadias: ${N - D}<br>positivos verdadeiros: ${VP}; falsos positivos: ${FP}<br>P(doente | positivo) = ${VP} / ${VP + FP} ≈ <span class="big">${fmt(VP / (VP + FP || 1), 3)}</span><br>P(sadio | negativo) = ${VN} / ${VN + FN} ≈ ${fmt(VN / (VN + FN || 1), 4)}<div class="hint">Quando a doença é rara, mesmo uma pequena taxa de erro entre os sadios, que são muito numerosos, produz mais falsos positivos do que positivos verdadeiros. Por isso, um primeiro exame positivo é seguido de exames confirmatórios.</div>`; };
+  b.draw();
+});
+
+tab('riscos', 'Risco relativo e risco absoluto',
+ 'Uma manchete diz que um fator "dobra o risco" de uma doença. Em matrizes de 1 000 pessoas, compare o risco sem o fator e com o fator: o risco relativo informa quantas vezes o risco aumentou, e o risco absoluto informa quantos casos a mais há em cada 1 000 pessoas (dados fictícios).',
+ (ctl, stg) => {
+  const s1 = slider(ctl, {label: 'Casos em 1 000 pessoas sem o fator', min: 1, max: 100, value: 2}, () => b.draw());
+  const s2 = slider(ctl, {label: 'Casos em 1 000 pessoas com o fator', min: 1, max: 200, value: 4}, () => b.draw());
+  const bb = btns(ctl); button(bb, 'De 2 para 4 em 1 000', () => { s1.v = 2; s2.v = 4; b.draw(); }); button(bb, 'De 100 para 200 em 1 000', () => { s1.v = 100; s2.v = 200; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.9});
+  b.onDraw = () => { const a = s1.v, z = s2.v; b.view(-1, 82, -6, 30);
+    [[a, 0, 'sem o fator'], [z, 42, 'com o fator']].forEach(([k, x0, t]) => { b.text(`${t}: ${k} em 1 000`, x0 + 20, 28, {bold: true});
+      for (let i = 0; i < 1000; i++){ const col = i % 40, row = Math.floor(i / 40); b.ctx.fillStyle = i < k ? C.acc2 : '#dfe7ef'; b.ctx.beginPath(); b.ctx.arc(b.X(x0 + col + .5), b.Y(25 - row - .5 + 1), b.v.sx * .38, 0, 2 * Math.PI); b.ctx.fill(); } });
+    b.text(`risco relativo: ${fmt(z / a, 2)} (${z >= a ? 'aumento' : 'redução'} de ${fmt(Math.abs(100 * (z / a - 1)), 0)}%)`, 20, -2.5, {size: 14, bold: true, color: C.acc2});
+    b.text(`diferença absoluta: ${z - a} casos em 1 000 (${fmt((z - a) / 10, 1)} ponto percentual)`, 62, -2.5, {size: 14, bold: true, color: C.blue}); };
+  const _d = b.draw.bind(b); b.draw = () => { _d(); const a = s1.v, z = s2.v; out.innerHTML = `Risco sem o fator: ${a}/1 000 = ${fmt(a / 10, 1)}%<br>Risco com o fator: ${z}/1 000 = ${fmt(z / 10, 1)}%<br>Risco relativo: ${z}/${a} = <span class="big">${fmt(z / a, 2)}</span><br>Aumento absoluto: <b>${z - a} em 1 000</b><div class="hint">"Dobra o risco" pode significar 2 casos a mais ou 100 casos a mais em cada 1 000 pessoas. Frequências naturais, como "4 em cada 1 000", são mais fáceis de interpretar.</div>`; };
+  b.draw();
+});
+
+boot();
+</script>
+</body>
+</html>

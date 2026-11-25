@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modelagem e otimização</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Modelagem e otimização</h1>
+<p>Problemas de máximo e de mínimo, sistemas lineares e ajuste de modelos a dados experimentais.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Modelagem e otimização ===== */
+function twoBoards(stg, a1 = 1.2, a2 = 1.3, cols = '1fr 1fr'){
+  const row = h('div', {style: `display:grid;grid-template-columns:${cols};gap:10px`}); stg.append(row);
+  const w1 = h('div'), w2 = h('div'); row.append(w1, w2);
+  return [new Board(w1, {aspect: a1}), new Board(w2, {aspect: a2, equal: false})];
+}
+
+tab('canteiro', 'Canteiro com 40 m de tela',
+ 'Um canteiro retangular encostado em um muro é cercado com 40 m de tela nos outros três lados. Se <i>x</i> é a medida dos dois lados perpendiculares ao muro, o lado paralelo mede 40 - 2<i>x</i> e a área é <i>A</i>(<i>x</i>) = <i>x</i>(40 - 2<i>x</i>). Arraste <i>x</i> e acompanhe o ponto sobre a parábola até o vértice.',
+ (ctl, stg) => {
+  const sT = slider(ctl, {label: 'Comprimento da tela', min: 10, max: 80, step: 2, value: 40, fmt: v => v + ' m'}, () => { sx.setMax(sT.v / 2); draw(); });
+  const sx = slider(ctl, {label: 'Medida <i>x</i>', min: 0, max: 20, step: 0.5, value: 6, fmt: v => fmt(v, 1) + ' m'}, () => draw());
+  const out = output(ctl);
+  const [b1, b2] = twoBoards(stg, 1.1, 1.1);
+  function draw(){
+    const T = sT.v, x = Math.min(sx.v, T / 2), y = T - 2 * x, A = x * y, xv = T / 4, Am = xv * (T - 2 * xv);
+    b1.view(-2, T + 2, -T / 2 - 3, 6);
+    b1.onDraw = () => {
+      b1.rect(-2, 0, T + 4, 1.2, {fill: '#c9b8a6', color: '#8d7b69', lw: 1.5}); b1.text('muro', T / 2, .6, {size: 12, color: '#5d4b3a'});
+      const x0 = (T - y) / 2;
+      b1.rect(x0, -x, y, x, {fill: 'rgba(76,154,42,.25)', stroke: null});
+      b1.path([[x0, 0], [x0, -x], [x0 + y, -x], [x0 + y, 0]], {color: C.acc2, lw: 3});
+      b1.text(fmt(x, 1) + ' m', x0 - .4, -x / 2, {align: 'right', color: C.acc2, bold: true});
+      b1.text(fmt(y, 1) + ' m', x0 + y / 2, -x - 1.2, {color: C.acc2, bold: true});
+      b1.text('A = ' + fmt(A, 1) + ' m²', x0 + y / 2, -x / 2, {bold: true});
+    };
+    b1.draw();
+    b2.view(-T * .06, T / 2 * 1.05, -Am * .1, Am * 1.18);
+    b2.onDraw = () => {
+      chartAxes(b2, {xticks: ticks(0, T / 2, 6), yticks: ticks(0, Am * 1.1, 6), x0: 0, y0: 0, xlabel: 'x (m)', ylabel: 'A (m²)'});
+      b2.fn(t => t * (T - 2 * t), {color: C.acc, lw: 2.5}, 0, T / 2);
+      b2.line(xv, 0, xv, Am, {color: C.muted, dash: [4, 4], lw: 1});
+      b2.dot(xv, Am, {fill: C.acc, r: 5}); b2.text('vértice', xv, Am, {dy: -14, size: 11});
+      b2.dot(x, A, {fill: C.acc2, r: 7});
+    };
+    b2.draw();
+    out.innerHTML = `A(x) = x · (${T} - 2x) = -2x² + ${T}x<br>A(${fmt(x, 1)}) = <b>${fmt(A, 2)} m²</b><br>Vértice: x = ${fmt(xv, 2)} m, A = <b>${fmt(Am, 2)} m²</b><br>` +
+      (Math.abs(x - xv) < 1e-9 ? '<span class="ok">Área máxima: o lado paralelo ao muro é o dobro de x.</span>' : '');
+  }
+  draw();
+});
+
+tab('sistemas', 'Sistemas 2 por 2',
+ 'Cada equação de um sistema linear com duas incógnitas é uma reta. Mova as barras: o objeto marca o ponto de interseção e classifica o sistema como possível e determinado (retas concorrentes), possível e indeterminado (retas coincidentes) ou impossível (retas paralelas distintas).',
+ (ctl, stg) => {
+  const m1 = slider(ctl, {label: 'Reta 1: inclinação', min: -3, max: 3, step: 0.1, value: 2, fmt: v => fmt(v, 1)}, () => b.draw());
+  const q1 = slider(ctl, {label: 'Reta 1: valor em x = 0', min: -10, max: 10, step: 0.5, value: 5, fmt: v => fmt(v, 1)}, () => b.draw());
+  const m2 = slider(ctl, {label: 'Reta 2: inclinação', min: -3, max: 3, step: 0.1, value: 1.5, fmt: v => fmt(v, 1)}, () => b.draw());
+  const q2 = slider(ctl, {label: 'Reta 2: valor em x = 0', min: -10, max: 10, step: 0.5, value: 8, fmt: v => fmt(v, 1)}, () => b.draw());
+  const bb = btns(ctl);
+  button(bb, 'Empresas de transporte', () => { m1.v = 2; q1.v = 5; m2.v = 1.5; q2.v = 8; b.draw(); });
+  button(bb, 'Paralelas', () => { m2.v = m1.v; q2.v = q1.v + 3; b.draw(); });
+  button(bb, 'Coincidentes', () => { m2.v = m1.v; q2.v = q1.v; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 4 / 3, equal: false});
+  b.view(-2, 12, -4, 30);
+  b.onDraw = () => {
+    chartAxes(b, {xticks: ticks(0, 12, 6), yticks: ticks(-4, 30, 7), x0: 0, y0: 0, xlabel: 'x', ylabel: 'y'});
+    const a = m1.v, c = q1.v, d = m2.v, e = q2.v;
+    b.fn(x => a * x + c, {color: C.acc, lw: 2.5}); b.fn(x => d * x + e, {color: C.acc2, lw: 2.5, dash: Math.abs(a - d) < 1e-9 && Math.abs(c - e) < 1e-9 ? [8, 8] : []});
+    const eq = (m, q) => `y = ${fmt(m, 1)}x ${q < 0 ? '- ' + fmt(-q, 1) : '+ ' + fmt(q, 1)}`;
+    let cls;
+    if (Math.abs(a - d) < 1e-9){ cls = Math.abs(c - e) < 1e-9 ? '<span class="ok">Sistema possível e indeterminado (SPI)</span>: as retas coincidem e há infinitas soluções.' : '<span class="bad">Sistema impossível (SI)</span>: as retas são paralelas e distintas, sem ponto comum.'; }
+    else { const x = (e - c) / (a - d), y = a * x + c; b.dot(x, y, {fill: C.ink, r: 7}); b.text(`(${fmt(x, 2)}; ${fmt(y, 2)})`, x, y, {dy: -16, bold: true, bg: 'rgba(255,255,255,.85)'}); cls = `<span class="ok">Sistema possível e determinado (SPD)</span>: solução única x = ${fmt(x, 2)} e y = ${fmt(y, 2)}.`; }
+    out.innerHTML = `<span style="color:${C.acc}">${eq(a, c)}</span><br><span style="color:${C.acc2}">${eq(d, e)}</span><br>${cls}` +
+      '<div class="hint">No exemplo das empresas: A cobra R$ 5,00 + R$ 2,00 por km e B cobra R$ 8,00 + R$ 1,50 por km (valores fictícios).</div>';
+  };
+  b.draw();
+});
+
+tab('latas', 'Latas de 1 litro',
+ 'Todas as latas cilíndricas deste objeto têm o mesmo volume, mas gastam quantidades diferentes de material. Mova o raio: a altura se ajusta para manter o volume, e o gráfico mostra a área total, que é mínima quando a altura é igual ao diâmetro.',
+ (ctl, stg) => {
+  const sv = slider(ctl, {label: 'Volume', min: 250, max: 2000, step: 50, value: 1000, fmt: v => fmt(v, 0) + ' cm³'}, () => draw());
+  const sr = slider(ctl, {label: 'Raio da base', min: 2, max: 12, step: 0.05, value: 4, fmt: v => fmt(v, 2) + ' cm'}, () => draw());
+  button(btns(ctl), 'Ir para o mínimo', () => { sr.v = Math.cbrt(sv.v / (2 * Math.PI)); draw(); }, true);
+  const out = output(ctl);
+  const [b1, b2] = twoBoards(stg, .75, 1.2, '1fr 1.4fr');
+  function draw(){
+    const V = sv.v, r = sr.v, hh = V / (Math.PI * r * r), A = r => 2 * Math.PI * r * r + 2 * V / r, ro = Math.cbrt(V / (2 * Math.PI));
+    const top1 = Math.max(Math.min(hh, 52) + 4, 2 * r + 8); b1.view(-top1 * .45, top1 * .45, -3, top1);
+    b1.onDraw = () => {
+      const H = Math.min(hh, 52); const e = r * .3;
+      b1.rect(-r, 0, 2 * r, H, {fill: '#d5dde6', stroke: null});
+      b1.line(-r, 0, -r, H, {color: C.ink, lw: 1.8}); b1.line(r, 0, r, H, {color: C.ink, lw: 1.8});
+      const ell = (y, full) => { const c = b1.ctx; c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.8; c.fillStyle = '#b9c6d3'; c.beginPath(); c.ellipse(b1.X(0), b1.Y(y), r * b1.v.sx, e * b1.v.sy, 0, 0, full ? 2 * Math.PI : Math.PI); if (full) c.fill(); c.stroke(); c.restore(); };
+      ell(0, false); ell(H, true);
+      b1.text('r = ' + fmt(r, 2), 0, -1.6, {size: 12, bold: true});
+      b1.text('h = ' + fmt(hh, 2) + (hh > 52 ? ' (cortada)' : ''), r + .8, H / 2, {align: 'left', size: 12, bold: true});
+    };
+    b1.draw();
+    const Amin = A(ro), top = A(2) * 1.05;
+    b2.view(.6, 12.6, Amin * .75, Math.min(top, Amin * 2.4));
+    b2.onDraw = () => {
+      chartAxes(b2, {xticks: [2, 4, 6, 8, 10, 12], yticks: ticks(Amin * .8, Amin * 2.3, 6), fy: y => fmt(y, 0), x0: 1.2, y0: Amin * .75, xlabel: 'r (cm)', ylabel: 'área total (cm²)'});
+      b2.fn(A, {color: C.acc, lw: 2.5}, 1.3, 12.6);
+      b2.dot(ro, Amin, {fill: C.acc, r: 5}); b2.text('mínimo', ro, Amin, {dy: 14, size: 11});
+      b2.dot(r, A(r), {fill: C.acc2, r: 7});
+    };
+    b2.draw();
+    out.innerHTML = `h = V / (πr²) = <b>${fmt(hh, 2)} cm</b><br>Área total = 2πr² + 2πrh = <b>${fmt(A(r), 1)} cm²</b><br>Mínimo: r ≈ ${fmt(ro, 2)} cm, h ≈ ${fmt(2 * ro, 2)} cm, área ≈ ${fmt(Amin, 1)} cm²<br>` +
+      `Material a mais que no mínimo: <b>${fmt((A(r) / Amin - 1) * 100, 1)}%</b>`;
+  }
+  draw();
+});
+
+tab('perimetro', 'Mesmo perímetro, áreas diferentes',
+ 'Figuras com o mesmo perímetro podem ter áreas diferentes. Com retângulos de perímetro fixo, a área <i>A</i>(<i>x</i>) = <i>x</i> · (<i>P</i>/2 - <i>x</i>) é máxima no quadrado. Com polígonos regulares de mesmo perímetro, a área aumenta com o número de lados e se aproxima da área do círculo.',
+ (ctl, stg) => {
+  const mode = select(ctl, 'Figuras', [['r', 'Retângulos de mesmo perímetro'], ['p', 'Polígonos regulares de mesmo perímetro']], () => { sx.wrap.style.display = mode.value === 'r' ? '' : 'none'; sn.wrap.style.display = mode.value === 'p' ? '' : 'none'; draw(); });
+  const sP = slider(ctl, {label: 'Perímetro', min: 8, max: 40, step: 2, value: 20, fmt: v => v + ' cm'}, () => { sx.setMax(sP.v / 2); draw(); });
+  const sx = slider(ctl, {label: 'Lado <i>x</i>', min: 0.5, max: 10, step: 0.5, value: 2, fmt: v => fmt(v, 1) + ' cm'}, () => draw());
+  const sn = slider(ctl, {label: 'Número de lados', min: 3, max: 24, value: 4}, () => draw()); sn.wrap.style.display = 'none';
+  const out = output(ctl);
+  const [b1, b2] = twoBoards(stg, 1.1, 1.1);
+  function draw(){
+    const P = sP.v;
+    if (mode.value === 'r'){
+      const x = Math.min(sx.v, P / 2 - .5), y = P / 2 - x, A = x * y, M = P * P / 16;
+      b1.view(-1, P / 2 + 1, -1, P / 2 + 1);
+      b1.onDraw = () => { b1.grid(1); b1.rect(0, 0, x, y, {fill: 'rgba(42,157,143,.3)', color: C.acc, lw: 2.5}); b1.text(fmt(x, 1), x / 2, -.5, {bold: true}); b1.text(fmt(y, 1), x + .3, y / 2, {align: 'left', bold: true}); };
+      b1.draw();
+      b2.view(-P * .03, P / 2 * 1.05, -M * .1, M * 1.2);
+      b2.onDraw = () => { chartAxes(b2, {xticks: ticks(0, P / 2, 5), yticks: ticks(0, M * 1.1, 5), x0: 0, y0: 0, xlabel: 'x (cm)', ylabel: 'A (cm²)'}); b2.fn(t => t * (P / 2 - t), {color: C.acc, lw: 2.5}, 0, P / 2); b2.dot(P / 4, M, {fill: C.acc, r: 5}); b2.dot(x, A, {fill: C.acc2, r: 7}); };
+      b2.draw();
+      out.innerHTML = `Lados: ${fmt(x, 1)} cm e ${fmt(y, 1)} cm<br>Área: <b>${fmt(A, 2)} cm²</b><br>Máximo: quadrado de lado ${fmt(P / 4, 2)} cm, com ${fmt(M, 2)} cm²`;
+    } else {
+      const n = sn.v, l = P / n, Ar = k => P * P / (4 * k * Math.tan(Math.PI / k)), Ac = P * P / (4 * Math.PI), R = l / (2 * Math.sin(Math.PI / n));
+      b1.view(-P / 5, P / 5, -P / 5, P / 5);
+      b1.onDraw = () => { b1.circle(0, 0, P / (2 * Math.PI), {color: C.line, lw: 1.5, dash: [5, 4]}); b1.poly(Array.from({length: n}, (_, k) => [R * Math.cos(Math.PI / 2 + 2 * Math.PI * k / n), R * Math.sin(Math.PI / 2 + 2 * Math.PI * k / n)]), {fill: 'rgba(42,157,143,.3)', color: C.acc, lw: 2.5}); };
+      b1.draw();
+      b2.view(1.5, 25, Ar(3) * .85, Ac * 1.08);
+      b2.onDraw = () => { chartAxes(b2, {xticks: [3, 6, 9, 12, 15, 18, 21, 24], yticks: ticks(Ar(3) * .9, Ac * 1.05, 5), x0: 2, y0: Ar(3) * .85, xlabel: 'lados', ylabel: 'área (cm²)'});
+        b2.line(2, Ac, 25, Ac, {color: C.acc2, dash: [6, 4], lw: 1.3}); b2.text('círculo', 24.5, Ac, {dy: -10, align: 'right', color: C.acc2, size: 11});
+        for (let k = 3; k <= 24; k++) b2.dot(k, Ar(k), {fill: k === n ? C.acc2 : C.acc, r: k === n ? 7 : 4, lw: k === n ? 2 : 0}); };
+      b2.draw();
+      out.innerHTML = `Polígono regular de ${n} lados, lado ${fmt(l, 3)} cm<br>Área: <b>${fmt(Ar(n), 2)} cm²</b><br>Círculo de mesmo perímetro: ${fmt(Ac, 2)} cm²`;
+    }
+  }
+  draw();
+});
+
+tab('hexagono', 'Perímetro e área do hexágono',
+ 'Ao variar o lado de um hexágono regular, o perímetro varia de forma linear (6ℓ) e a área de forma quadrática (3ℓ²√3/2). Dobrar o lado dobra o perímetro e quadruplica a área.',
+ (ctl, stg) => {
+  const sl = slider(ctl, {label: 'Lado ℓ', min: 0.5, max: 5, step: 0.1, value: 2, fmt: v => fmt(v, 1) + ' cm'}, () => draw());
+  const out = output(ctl);
+  const [b1, b2] = twoBoards(stg, 1, 1.1);
+  const Pf = l => 6 * l, Af = l => 3 * l * l * Math.sqrt(3) / 2;
+  function draw(){
+    const l = sl.v;
+    b1.view(-5.5, 5.5, -5.5, 5.5);
+    b1.onDraw = () => { b1.grid(1, '#f1ede4'); const pts = Array.from({length: 6}, (_, k) => [l * Math.cos(k * Math.PI / 3), l * Math.sin(k * Math.PI / 3)]); pts.forEach(p => b1.line(0, 0, p[0], p[1], {color: C.line, lw: 1})); b1.poly(pts, {fill: 'rgba(42,157,143,.3)', color: C.acc, lw: 2.5}); };
+    b1.draw();
+    b2.view(-.3, 5.3, -6, 70);
+    b2.onDraw = () => { chartAxes(b2, {xticks: [1, 2, 3, 4, 5], yticks: [0, 20, 40, 60], x0: 0, y0: 0, xlabel: 'ℓ (cm)'});
+      b2.fn(Pf, {color: C.blue, lw: 2.5}, 0, 5); b2.fn(Af, {color: C.acc2, lw: 2.5}, 0, 5);
+      b2.text('perímetro', 5, Pf(5), {dy: 14, align: 'right', color: C.blue, size: 12, bold: true}); b2.text('área', 4.75, Af(4.75), {dx: -8, align: 'right', color: C.acc2, size: 12, bold: true});
+      b2.dot(l, Pf(l), {fill: C.blue, r: 6}); b2.dot(l, Af(l), {fill: C.acc2, r: 6}); };
+    b2.draw();
+    out.innerHTML = `Perímetro: 6 · ${fmt(l, 1)} = <b>${fmt(Pf(l), 2)} cm</b><br>Área: 3 · ${fmt(l, 1)}² · √3 / 2 ≈ <b>${fmt(Af(l), 2)} cm²</b><br>Com o lado dobrado (${fmt(2 * l, 1)} cm): perímetro ${fmt(Pf(2 * l), 2)} cm e área ${fmt(Af(2 * l), 2)} cm²`;
+  }
+  draw();
+});
+
+tab('lancamento', 'Lançamento vertical',
+ 'Uma bola é lançada para cima. As posições são registradas a cada 0,1 s, como em uma análise de vídeo, e seguem o modelo quadrático <i>h</i>(<i>t</i>) = <i>h</i><sub>0</sub> + <i>v</i><sub>0</sub><i>t</i> - 4,9<i>t</i>² (sem resistência do ar). As segundas diferenças das alturas são constantes.',
+ (ctl, stg) => {
+  const sv = slider(ctl, {label: 'Velocidade inicial <i>v</i><sub>0</sub>', min: 2, max: 15, step: 0.5, value: 8, fmt: v => fmt(v, 1) + ' m/s'}, () => b.draw());
+  const sh = slider(ctl, {label: 'Altura inicial <i>h</i><sub>0</sub>', min: 0, max: 3, step: 0.1, value: 1.5, fmt: v => fmt(v, 1) + ' m'}, () => b.draw());
+  const cm = check(ctl, 'Mostrar o modelo quadrático', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, equal: false});
+  b.onDraw = () => {
+    const v = sv.v, h0 = sh.v, H = t => h0 + v * t - 4.9 * t * t, tv = v / 9.8, hm = H(tv), tf = (v + Math.sqrt(v * v + 19.6 * h0)) / 9.8;
+    b.view(-tf * .07, tf * 1.08, -hm * .08, hm * 1.2);
+    chartAxes(b, {xticks: ticks(0, tf, 6), yticks: ticks(0, hm * 1.1, 6), x0: 0, y0: 0, xlabel: 't (s)', ylabel: 'h (m)'});
+    if (cm.checked) b.fn(H, {color: C.acc2, lw: 2}, 0, tf);
+    const pts = []; for (let k = 0; k * .1 <= tf; k++) pts.push(H(k * .1));
+    pts.forEach((y, k) => b.dot(k * .1, y, {fill: C.acc, r: 4.5}));
+    b.dot(tv, hm, {fill: C.acc2, r: 6}); b.text('altura máxima', tv, hm, {dy: -14, size: 11, bg: 'rgba(255,255,255,.85)'});
+    const d1 = pts.slice(1, 6).map((y, i) => y - pts[i]), d2 = d1.slice(1).map((y, i) => y - d1[i]);
+    out.innerHTML = `h(t) = ${fmt(h0, 1)} + ${fmt(v, 1)}t - 4,9t²<br>Altura máxima: t = ${fmt(v, 1)}/9,8 ≈ ${fmt(tv, 2)} s, h ≈ <b>${fmt(hm, 2)} m</b><br>Chegada ao solo: t ≈ ${fmt(tf, 2)} s<br>` +
+      `1ª diferenças: ${d1.map(x => fmt(x, 3)).join('; ')}<br>2ª diferenças: ${d2.map(x => fmt(x, 3)).join('; ')}`;
+  };
+  b.draw();
+});
+
+tab('ajuste', 'Ajuste de curvas: pêndulo',
+ 'Os pontos são as medições do período <i>T</i> de pêndulos com diferentes comprimentos <i>L</i>. Escolha um modelo: o objeto calcula a curva de mínimos quadrados, mostra os resíduos (diferença entre o observado e o previsto) e o coeficiente de determinação <i>R</i>². Na linearização, o gráfico de <i>T</i>² em função de <i>L</i> é quase uma reta pela origem.',
+ (ctl, stg) => {
+  const L = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2], T = [0.90, 1.26, 1.56, 1.79, 2.01, 2.20];
+  const mode = select(ctl, 'Modelo', [['lin', 'Linear: T = aL + b'], ['pot', 'Potência: T = a · L^b'], ['quad', 'Quadrático: T = aL² + bL + c'], ['line', 'Linearização: T² = kL']], () => b.draw());
+  const cr = check(ctl, 'Mostrar os resíduos', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, equal: false});
+  function lsq(X, Y){ const n = X.length, sx = X.reduce((a, b) => a + b), sy = Y.reduce((a, b) => a + b), sxx = X.reduce((a, x) => a + x * x, 0), sxy = X.reduce((a, x, i) => a + x * Y[i], 0); const a = (n * sxy - sx * sy) / (n * sxx - sx * sx); return [a, (sy - a * sx) / n]; }
+  function quad(X, Y){ // equações normais 3x3
+    const S = k => X.reduce((a, x) => a + Math.pow(x, k), 0), Sy = k => X.reduce((a, x, i) => a + Math.pow(x, k) * Y[i], 0);
+    const M = [[S(4), S(3), S(2), Sy(2)], [S(3), S(2), S(1), Sy(1)], [S(2), S(1), X.length, Sy(0)]];
+    for (let i = 0; i < 3; i++){ for (let j = i + 1; j < 3; j++){ const f = M[j][i] / M[i][i]; for (let k = i; k < 4; k++) M[j][k] -= f * M[i][k]; } }
+    const r = [0, 0, 0]; for (let i = 2; i >= 0; i--){ let s = M[i][3]; for (let k = i + 1; k < 3; k++) s -= M[i][k] * r[k]; r[i] = s / M[i][i]; } return r;
+  }
+  const R2 = (Y, P) => { const m = Y.reduce((a, b) => a + b) / Y.length; const ssr = Y.reduce((a, y, i) => a + (y - P[i]) ** 2, 0), sst = Y.reduce((a, y) => a + (y - m) ** 2, 0); return 1 - ssr / sst; };
+  b.onDraw = () => {
+    const m = mode.value; let Y = T, f, eq;
+    if (m === 'line'){ Y = T.map(t => t * t); const k = L.reduce((a, x, i) => a + x * Y[i], 0) / L.reduce((a, x) => a + x * x, 0); f = x => k * x; eq = `T² ≈ ${fmt(k, 3)} · L &nbsp; (4π²/g com g ≈ ${fmt(4 * Math.PI * Math.PI / k, 2)} m/s²)`; }
+    else if (m === 'lin'){ const [a, c] = lsq(L, T); f = x => a * x + c; eq = `T ≈ ${fmt(a, 3)}L + ${fmt(c, 3)}`; }
+    else if (m === 'pot'){ const [bb, la] = lsq(L.map(Math.log), T.map(Math.log)); const a = Math.exp(la); f = x => a * Math.pow(x, bb); eq = `T ≈ ${fmt(a, 3)} · L<sup>${fmt(bb, 3)}</sup>`; }
+    else { const [a, bq, c] = quad(L, T); f = x => a * x * x + bq * x + c; eq = `T ≈ ${fmt(a, 3)}L² + ${fmt(bq, 3)}L + ${fmt(c, 3)}`; }
+    const top = m === 'line' ? 5.4 : 2.6;
+    b.view(-.07, 1.38, -top * .08, top);
+    chartAxes(b, {xticks: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2], yticks: ticks(0, top * .95, 5), x0: 0, y0: 0, xlabel: 'L (m)', ylabel: m === 'line' ? 'T² (s²)' : 'T (s)'});
+    b.fn(f, {color: C.acc2, lw: 2.2}, 0.01, 1.35);
+    const P = L.map(f);
+    L.forEach((x, i) => { if (cr.checked) b.line(x, Y[i], x, P[i], {color: C.purple, lw: 2}); b.dot(x, Y[i], {fill: C.acc, r: 6}); });
+    const res = Y.map((y, i) => y - P[i]);
+    out.innerHTML = `<span class="big">${eq}</span><br>R² = <b>${fix(R2(Y, P), 4)}</b><br>Soma dos quadrados dos resíduos: ${fix(res.reduce((a, r) => a + r * r, 0), 5)}` +
+      `<table><tr><th>L</th><th>${m === 'line' ? 'T²' : 'T'}</th><th>previsto</th><th>resíduo</th></tr>${L.map((x, i) => `<tr><td>${fmt(x, 1)}</td><td>${fix(Y[i], 3)}</td><td>${fix(P[i], 3)}</td><td>${fix(res[i], 3)}</td></tr>`).join('')}</table>` +
+      '<div class="hint">Um R² alto não basta: o modelo deve ter sentido físico. A teoria prevê T proporcional à raiz quadrada de L.</div>';
+  };
+  b.draw();
+});
+
+tab('exponencial-dados', 'Modelos exponenciais e dados',
+ 'Ajuste à mão um modelo exponencial <i>y</i> = <i>y</i><sub>0</sub> · <i>q</i><sup><i>x</i></sup> aos dados. Na pressão atmosférica, a pressão é multiplicada por um fator constante a cada quilômetro de altitude. Na população do Brasil, o modelo ajustado de 1950 a 1980 deixa de valer quando o ritmo de crescimento muda.',
+ (ctl, stg) => {
+  const D = {
+    p: {x: [0, 1, 2, 3, 4, 5, 6, 8, 10], y: [1013, 899, 795, 701, 617, 541, 472, 357, 264], y0: 1013, q: 0.886, xl: 'altitude (km)', yl: 'pressão (hPa)', step: 1, unit: 'km', fit: 9, xs: 1},
+    b: {x: [0, 10, 20, 30, 41, 50, 60, 72], y: [51.9, 70.1, 93.1, 119.0, 146.8, 169.8, 190.8, 203.1], y0: 51.9, q: 1.32, xl: 'anos desde 1950', yl: 'população (milhões)', step: 10, unit: 'década', fit: 4, xs: 10}
+  };
+  const sel = select(ctl, 'Dados', [['p', 'Pressão atmosférica e altitude'], ['b', 'População do Brasil nos censos (1950 a 2022)']], () => preset());
+  const sy = slider(ctl, {label: 'Valor inicial <i>y</i><sub>0</sub>', min: 10, max: 1200, step: 0.1, value: 1013, fmt: v => fmt(v, 1)}, () => b.draw());
+  const sq = slider(ctl, {label: 'Fator <i>q</i> por unidade', min: 0.7, max: 1.6, step: 0.002, value: 0.886, fmt: v => fmt(v, 3)}, () => b.draw());
+  button(btns(ctl), 'Modelo do texto', () => preset(), true);
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, equal: false});
+  function preset(){ const d = D[sel.value]; sy.v = d.y0; sq.v = d.q; b.draw(); }
+  b.onDraw = () => {
+    const d = D[sel.value], y0 = sy.v, q = sq.v, f = x => y0 * Math.pow(q, x / d.xs), X = d.x, xm = X[X.length - 1] * 1.08, ym = Math.max(...d.y, f(xm)) * 1.12;
+    b.view(-xm * .06, xm, -ym * .06, ym);
+    chartAxes(b, {xticks: ticks(0, xm, 8), yticks: ticks(0, ym * .95, 6), x0: 0, y0: 0, xlabel: d.xl, ylabel: d.yl});
+    b.fn(f, {color: C.acc2, lw: 2.2}, 0, xm);
+    let ss = 0; X.forEach((x, i) => { const used = i < d.fit; b.line(x, d.y[i], x, f(x), {color: C.purple, lw: 1.5}); b.dot(x, d.y[i], {fill: used ? C.acc : C.blue, r: 6}); if (used) ss += (d.y[i] - f(x)) ** 2; });
+    out.innerHTML = `<span class="big">y = ${fmt(y0, 1)} · ${fmt(q, 3)}<sup>${d.xs === 1 ? 'x' : 'x/10'}</sup></span><br>Por ${d.unit}: multiplica por ${fmt(q, 3)} (${q >= 1 ? '+' : ''}${fmt((q - 1) * 100, 1)}%)<br>Soma dos quadrados dos resíduos${sel.value === 'b' ? ' (1950 a 1980)' : ''}: <b>${fmt(ss, 1)}</b>` +
+      (sel.value === 'b' ? '<div class="hint">Pontos verdes: censos usados no ajuste (1950 a 1980). Pontos azuis: censos posteriores. Fonte dos dados: IBGE, censos demográficos.</div>' : '<div class="hint">Valores aproximados da atmosfera padrão.</div>');
+  };
+  b.draw();
+});
+
+boot();
+</script>
+</body>
+</html>

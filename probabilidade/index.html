@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probabilidade: simulador</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Probabilidade: simulador</h1>
+<p>Experimentos aleatórios simulados: moedas, dados, corrida de cavalos, decaimento, três portas, aniversários, roletas e distribuição binomial.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Probabilidade ===== */
+const die = () => 1 + rnd(6);
+function bars(b, labels, series, o = {}){ // series: [{vals, color, label}] lado a lado
+  const n = labels.length, ymax = o.ymax || Math.max(1e-9, ...series.flatMap(s => s.vals)) * 1.15;
+  b.view(-1.5, n - .1, -ymax * .1, ymax * 1.2);
+  chartAxes(b, {xticks: [], yticks: ticks(0, ymax, 5), fy: o.fy || (y => fmt(y, 3)), x0: -.6, y0: 0, ylabel: o.ylabel || ''});
+  const w = .8 / series.length;
+  labels.forEach((l, i) => { series.forEach((s, j) => { const v = s.vals[i]; b.rect(i - .4 + j * w, 0, w * .92, v, {fill: s.color, stroke: null, alpha: o.hi != null && o.hi !== i ? .45 : 1}); }); b.text(String(l), i, 0, {dy: 12, size: 12}); });
+  if (series.length > 1 || series[0].label) series.forEach((s, j) => { b.rect(n - 3.2, ymax * (1.12 - .08 * j), .25, ymax * .05, {fill: s.color, stroke: null}); b.text(s.label, n - 2.85, ymax * (1.12 - .08 * j) + ymax * .025, {align: 'left', size: 12}); });
+}
+
+tab('frequencias', 'Frequência relativa',
+ 'Simule lançamentos de uma moeda ou de um dado e acompanhe a frequência relativa do evento escolhido. No começo ela oscila muito; com muitos lançamentos, as oscilações diminuem e a frequência se estabiliza perto da probabilidade (lei dos grandes números). Cada nova simulação produz uma sequência diferente.',
+ (ctl, stg) => {
+  const exp = select(ctl, 'Experimento', [['moeda', 'moeda equilibrada: cara'], ['dado', 'dado: sair 6'], ['tach', 'tachinha: ponta para cima (probabilidade desconhecida)']], () => { reset(); });
+  const sN = select(ctl, 'Número de lançamentos', [['100', '100'], ['1000', '1 000'], ['10000', '10 000']], () => reset(), '1000');
+  const bb = btns(ctl);
+  button(bb, 'Nova simulação', () => reset(), true); button(bb, '+1 lançamento', () => { add(1); b.draw(); }); button(bb, 'Sobrepor 5 simulações', () => { multi = true; reset(true); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false});
+  let runs = [], multi = false; const pTach = .62;
+  const p = () => exp.value === 'moeda' ? .5 : exp.value === 'dado' ? 1 / 6 : pTach;
+  function sim(N){ const f = []; let s = 0; for (let i = 1; i <= N; i++){ if (Math.random() < p()) s++; f.push(s); } return f; }
+  function reset(keep){ if (!keep) multi = false; const N = +sN.value; runs = multi ? Array.from({length: 5}, () => sim(N)) : [sim(N)]; b.draw(); }
+  function add(k){ multi = false; runs = [runs[0]]; let s = runs[0].at(-1) || 0; for (let i = 0; i < k; i++){ if (Math.random() < p()) s++; runs[0].push(s); } }
+  b.onDraw = () => {
+    const N = Math.max(...runs.map(r => r.length)); b.view(-N * .06, N * 1.02, -.08, 1.05);
+    chartAxes(b, {xticks: ticks(0, N, 5), yticks: [0, .2, .4, .6, .8, 1], fy: y => fmt(y, 1), fx: x => fmt(x, 0), x0: 0, y0: 0, xlabel: 'número de lançamentos', ylabel: 'frequência relativa'});
+    if (exp.value !== 'tach'){ b.line(0, p(), N, p(), {color: C.acc2, dash: [6, 4], lw: 1.5}); b.text('probabilidade ' + (exp.value === 'moeda' ? '1/2' : '1/6'), N, p(), {align: 'right', dy: -16, size: 12, color: C.acc2, bg: 'rgba(255,255,255,.85)'}); }
+    runs.forEach((r, j) => b.path(r.map((s, i) => [i + 1, s / (i + 1)]), {color: PAL[j === 0 ? 0 : j + 1], lw: 1.8}));
+    const r = runs[0], n = r.length, s = r.at(-1);
+    out.innerHTML = `Lançamentos: <b>${n}</b><br>Ocorrências do evento: <b>${s}</b><br>Frequência relativa: <span class="big">${fmt(s / n, 4)}</span>` + (exp.value === 'tach' ? '<div class="hint">Para a tachinha não há simetria entre as posições: a probabilidade só pode ser estimada pela frequência relativa em muitos lançamentos (o simulador usa um valor fictício).</div>' : `<div class="hint">Diferença entre a frequência e a probabilidade: ${fmt(Math.abs(s / n - p()), 4)}</div>`);
+  };
+  reset();
+});
+
+tab('dois-dados', 'Soma de dois dados',
+ 'No lançamento de dois dados, os 36 pares ordenados são equiprováveis, mas as 11 somas não são. Clique em uma soma para destacar os pares que a formam e simule lançamentos para comparar as frequências observadas com as esperadas.',
+ (ctl, stg) => {
+  let soma = 7, cnt = Array(13).fill(0), N = 0;
+  const bb = btns(ctl);
+  [36, 360, 3600].forEach(k => button(bb, `Lançar ${k} vezes`, () => { for (let i = 0; i < k; i++) cnt[die() + die()]++; N += k; draw(); }, k === 360));
+  button(btns(ctl), 'Zerar', () => { cnt.fill(0); N = 0; draw(); });
+  const out = output(ctl);
+  const grid = h('div', {style: 'display:grid;grid-template-columns:1fr 1.4fr;gap:10px'}); stg.append(grid);
+  const w1 = h('div'), w2 = h('div'); grid.append(w1, w2);
+  const b1 = new Board(w1, {aspect: 1}), b2 = new Board(w2, {aspect: 1.4, equal: false});
+  b1.view(-.8, 6.2, -.2, 6.8);
+  b1.onClick = (x, y) => { const i = Math.floor(x), j = Math.floor(6 - y); if (i >= 0 && i < 6 && j >= 0 && j < 6){ soma = i + j + 2; draw(); } };
+  b2.onClick = (x) => { const i = Math.round(x); if (i >= 0 && i <= 10){ soma = i + 2; draw(); } };
+  b1.onDraw = () => {
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++){ const on = i + j + 2 === soma; b1.rect(i, 5 - j, 1, 1, {fill: on ? C.acc2 : '#fff', color: C.line, lw: 1}); b1.text(`(${i + 1},${j + 1})`, i + .5, 5.5 - j, {size: 10, color: on ? '#fff' : C.ink}); }
+    for (let i = 0; i < 6; i++){ b1.text(String(i + 1), i + .5, 6.35, {bold: true, color: C.blue}); b1.text(String(i + 1), -.35, 5.5 - i, {bold: true, color: C.purple}); }
+    b1.text('1º dado', 3, 6.68, {size: 11, color: C.blue});
+  };
+  b2.onDraw = () => {
+    const L = Array.from({length: 11}, (_, i) => i + 2), exp = L.map(s => (6 - Math.abs(s - 7)) / 36);
+    const ser = [{vals: exp, color: C.acc, label: 'esperada'}]; if (N) ser.push({vals: L.map(s => cnt[s] / N), color: C.acc2, label: 'observada'});
+    bars(b2, L, ser, {ylabel: 'frequência relativa', fy: y => fmt(y, 2), ymax: .2, hi: soma - 2});
+  };
+  function draw(){
+    b1.draw(); b2.draw(); const k = 6 - Math.abs(soma - 7);
+    out.innerHTML = `Soma ${soma}: <b>${k}</b> pares de 36<br><span class="big">P(soma ${soma}) = ${k}/36${gcd(k, 36) > 1 ? ' = ' + k / gcd(k, 36) + '/' + 36 / gcd(k, 36) : ''} ≈ ${fmt(k / 36, 3)}</span>` +
+      (N ? `<br>Lançamentos: ${N}; soma ${soma} saiu ${cnt[soma]} vezes (frequência ${fmt(cnt[soma] / N, 3)}; esperado ${fmt(N * k / 36, 1)}).` : '');
+  }
+  draw();
+});
+
+tab('corrida-cavalos', 'Corrida de cavalos',
+ 'Doze cavalos, numerados de 1 a 12, disputam uma corrida. A cada rodada, lançam-se dois dados, e avança uma casa o cavalo cujo número é a soma obtida. Jogue algumas corridas e observe quais cavalos vencem com mais frequência e qual cavalo nunca sai do lugar.',
+ (ctl, stg) => {
+  const sL = slider(ctl, {label: 'Casas até a chegada', min: 4, max: 12, value: 8}, () => novo());
+  const bb = btns(ctl);
+  button(bb, 'Lançar os dados', () => rodada(), true); button(bb, 'Correr até o fim', () => { while (!fim) rodada(true); draw(); });
+  const b2 = btns(ctl);
+  button(b2, 'Nova corrida', () => novo()); button(b2, 'Simular 100 corridas', () => { for (let k = 0; k < 100; k++){ novo(true); while (!fim) rodada(true); } draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, equal: false});
+  let pos, fim, last = null, vit = Array(13).fill(0), nc = 0;
+  function novo(silent){ pos = Array(13).fill(0); fim = 0; last = null; if (!silent) draw(); }
+  function rodada(silent){ if (fim) return; const a = die(), c = die(); last = [a, c]; pos[a + c]++; if (pos[a + c] >= sL.v){ fim = a + c; vit[fim]++; nc++; } if (!silent) draw(); }
+  b.onDraw = () => {
+    const L = sL.v; b.view(-1.6, L + 3.2, -.2, 12.6);
+    for (let k = 0; k <= L; k++) b.line(k, .5, k, 12.5, {color: k === L ? C.acc2 : C.line, lw: k === L ? 3 : 1});
+    b.text('chegada', L, 12.55, {size: 11, color: C.acc2, base: 'bottom'});
+    for (let c = 1; c <= 12; c++){ const y = 12.5 - c + .5 - .5; b.line(-.2, y - .5, L + .2, y - .5, {color: C.grid, lw: 1});
+      b.text(String(c), -.9, y, {bold: true, size: 13});
+      const x = pos[c] + .5 - (pos[c] >= L ? .5 : 0); b.circle(x - .5 + .5, y, .3, {fill: fim === c ? C.acc2 : PAL[c % PAL.length], color: C.ink, lw: 1});
+      b.text(vit[c] ? String(vit[c]) : '', L + 1.6, y, {size: 12, color: C.muted}); }
+    b.text('vitórias', L + 1.6, 12.55, {size: 11, color: C.muted, base: 'bottom'});
+  };
+  function draw(){ b.draw(); out.innerHTML = (last ? `Dados: ${last[0]} e ${last[1]} → avança o cavalo <b>${last[0] + last[1]}</b><br>` : 'Lance os dados.<br>') + (fim ? `<span class="ok">Venceu o cavalo ${fim}.</span><br>` : '') + `Corridas disputadas: ${nc}<div class="hint">O cavalo 7 corresponde a 6 dos 36 resultados; os cavalos 2 e 12, a apenas 1; o cavalo 1, a nenhum.</div>`; }
+  novo();
+});
+
+tab('decaimento', 'Decaimento com dados',
+ 'Simulação do decaimento radioativo: lançam-se 100 dados e, a cada rodada, retiram-se os que mostram a face 6. O número de dados restantes é comparado com o modelo N(n) = 100 · (5/6)<sup>n</sup>; a "meia-vida" da amostra é o número de rodadas em que cerca de metade dos dados é retirada.',
+ (ctl, stg) => {
+  const bb = btns(ctl);
+  button(bb, 'Próxima rodada', () => { step(); draw(); }, true); button(bb, 'Até o fim', () => { while (hist.at(-1) > 0 && hist.length < 60) step(); draw(); }); button(bb, 'Recomeçar', () => { reset(); draw(); });
+  const out = output(ctl);
+  const grid = h('div', {style: 'display:grid;grid-template-columns:1fr 1.5fr;gap:10px'}); stg.append(grid);
+  const w1 = h('div'), w2 = h('div'); grid.append(w1, w2);
+  const b1 = new Board(w1, {aspect: 1}), b2 = new Board(w2, {aspect: 1.4, equal: false});
+  let dice, hist, lastFace;
+  function reset(){ dice = Array(100).fill(true); lastFace = Array(100).fill(0); hist = [100]; }
+  function step(){ let n = 0; dice.forEach((on, i) => { if (!on) return; const f = die(); lastFace[i] = f; if (f === 6) dice[i] = false; else n++; }); hist.push(n); }
+  b1.view(-.2, 10.2, -.2, 10.2);
+  b1.onDraw = () => { for (let i = 0; i < 100; i++){ const x = i % 10, y = 9 - Math.floor(i / 10), on = dice[i], j6 = !on && lastFace[i] === 6 && hist.length > 1 && dice.filter(Boolean).length === hist.at(-1);
+      b1.rect(x + .08, y + .08, .84, .84, {fill: on ? '#fff' : '#eee8dc', color: on ? C.ink : C.line, lw: 1}); if (on && lastFace[i]) b1.text(String(lastFace[i]), x + .5, y + .5, {size: 11, bold: true}); } };
+  b2.onDraw = () => { const R = Math.max(12, hist.length + 1); b2.view(-R * .08, R, -8, 108);
+    chartAxes(b2, {xticks: ticks(0, R, 6), yticks: [0, 25, 50, 75, 100], fx: x => fmt(x, 0), fy: y => fmt(y, 0), x0: 0, y0: 0, xlabel: 'rodada', ylabel: 'dados restantes'});
+    b2.fn(n => 100 * Math.pow(5 / 6, n), {color: C.acc, lw: 2}, 0, R); b2.text('modelo 100 · (5/6)ⁿ', R * .97, 100 * Math.pow(5 / 6, R * .97) + 6, {align: 'right', size: 12, color: C.acc});
+    b2.line(0, 50, R, 50, {color: C.muted, dash: [4, 4], lw: 1}); b2.line(3.8, 0, 3.8, 50, {color: C.muted, dash: [4, 4], lw: 1}); b2.text('meia-vida ≈ 3,8', 3.9, 52, {align: 'left', size: 11, color: C.muted});
+    hist.forEach((v, i) => b2.dot(i, v, {fill: C.acc2, r: 4.5, lw: 1})); };
+  function draw(){ b1.draw(); b2.draw(); const n = hist.length - 1;
+    out.innerHTML = `Rodada: <b>${n}</b><br>Dados restantes: <b>${hist.at(-1)}</b><br>Modelo: 100 · (5/6)<sup>${n}</sup> ≈ <b>${fmt(100 * Math.pow(5 / 6, n), 1)}</b><br>Meia-vida do modelo: log 0,5 / log(5/6) ≈ 3,8 rodadas<div class="hint">Os resultados de cada simulação variam em torno do modelo, porque o decaimento é um fenômeno aleatório.</div>`; }
+  reset(); draw();
+});
+
+tab('tres-portas', 'Três portas',
+ 'Há um carro atrás de uma das três portas e cabras atrás das outras. Escolha uma porta; o apresentador, que sabe onde está o carro, abre outra porta com uma cabra e oferece a troca. Jogue algumas vezes e depois simule muitos jogos para comparar as estratégias "manter" e "trocar".',
+ (ctl, stg) => {
+  const out = output(ctl);
+  const bb = btns(ctl);
+  button(bb, 'Manter', () => decide(false), true); button(bb, 'Trocar', () => decide(true), true);
+  const b2 = btns(ctl);
+  button(b2, 'Novo jogo', () => novo()); button(b2, 'Simular 1 000 jogos', () => { for (let k = 0; k < 1000; k++){ const c = rnd(3), e = rnd(3); st.m.n++; st.t.n++; if (e === c) st.m.w++; else st.t.w++; } draw(); });
+  const b = stageBoard(stg, {aspect: 1.8, equal: false});
+  let car, esc, aberta, fase, venceu, st = {m: {n: 0, w: 0}, t: {n: 0, w: 0}}, msg = '';
+  function novo(){ car = rnd(3); esc = null; aberta = null; fase = 0; venceu = null; msg = 'Clique em uma porta.'; draw(); }
+  b.onClick = (x, y) => { if (y < 4.2 || y > 9.6) return; const k = Math.floor((x + .3) / 3.3); if (k < 0 || k > 2) return;
+    if (fase === 0){ esc = k; const opts = [0, 1, 2].filter(d => d !== esc && d !== car); aberta = opts[rnd(opts.length)]; fase = 1; msg = `Você escolheu a porta ${esc + 1}. O apresentador abriu a porta ${aberta + 1}, que tem uma cabra. Manter ou trocar?`; draw(); }
+    else if (fase === 1 && k !== aberta) decide(k !== esc); };
+  function decide(tr){ if (fase !== 1) return; if (tr) esc = [0, 1, 2].find(d => d !== esc && d !== aberta); fase = 2; venceu = esc === car; const s = tr ? st.t : st.m; s.n++; if (venceu) s.w++; msg = venceu ? `<span class="ok">Você ${tr ? 'trocou' : 'manteve'} e ganhou o carro.</span>` : `<span class="bad">Você ${tr ? 'trocou' : 'manteve'} e ficou com uma cabra.</span> O carro estava na porta ${car + 1}.`; draw(); }
+  b.onDraw = () => {
+    b.view(-.6, 10.8, -.4, 10);
+    for (let k = 0; k < 3; k++){ const x = k * 3.3 + .3, open = k === aberta || fase === 2;
+      b.rect(x, 4.4, 2.6, 5, {fill: open ? '#f6f3ec' : (k === esc ? '#e9c46a' : '#c98d5a'), color: C.ink, lw: 2});
+      if (open) b.text(k === car ? '🚗' : '🐐', x + 1.3, 6.9, {size: 46}); else { b.text(String(k + 1), x + 1.3, 7.4, {size: 30, bold: true, color: '#fff'}); b.dot(x + 2.2, 6.7, {fill: '#7a5c12', r: 5, lw: 0}); }
+      if (k === esc) b.text('sua escolha', x + 1.3, 9.75, {size: 12, bold: true, color: C.acc2}); }
+    // barras de vitórias
+    const fr = s => s.n ? s.w / s.n : 0;
+    [['manter', st.m, C.blue], ['trocar', st.t, C.acc]].forEach(([nm, s, col], i) => { const y = 2.4 - i * 1.6; b.text(nm, .9, y + .4, {align: 'right', size: 13, bold: true}); b.rect(1.2, y, 8 * fr(s), .8, {fill: col, stroke: null}); b.rect(1.2, y, 8, .8, {color: C.line, lw: 1}); b.text(s.n ? `${fmt(100 * fr(s), 1)}% de ${s.n}` : 'sem jogos', 9.4, y + .4, {align: 'left', size: 12}); });
+    b.line(1.2 + 8 / 3, -.2, 1.2 + 8 / 3, 3.4, {color: C.muted, dash: [3, 3], lw: 1}); b.line(1.2 + 16 / 3, -.2, 1.2 + 16 / 3, 3.4, {color: C.muted, dash: [3, 3], lw: 1});
+    b.text('1/3', 1.2 + 8 / 3, 3.6, {size: 11, color: C.muted}); b.text('2/3', 1.2 + 16 / 3, 3.6, {size: 11, color: C.muted});
+  };
+  function draw(){ b.draw(); out.innerHTML = msg + '<div class="hint">Quem mantém só ganha se acertou de início (probabilidade 1/3). Quem troca ganha sempre que errou de início (probabilidade 2/3), porque o apresentador nunca abre a porta do carro.</div>'; }
+  novo();
+});
+
+tab('aniversario', 'Problema do aniversário',
+ 'Em um grupo de n pessoas, qual é a chance de pelo menos duas fazerem aniversário no mesmo dia? O gráfico mostra a probabilidade, calculada pelo complementar, e o botão sorteia um grupo para verificar as coincidências. Com 23 pessoas, a probabilidade já passa de 50%.',
+ (ctl, stg) => {
+  const sn = slider(ctl, {label: 'Número de pessoas (n)', min: 2, max: 80, value: 23}, () => { grupo = null; draw(); });
+  const bb = btns(ctl);
+  button(bb, 'Sortear um grupo', () => { grupo = Array.from({length: sn.v}, () => rnd(365)); draw(); }, true);
+  button(bb, 'Sortear 1 000 grupos', () => { let c = 0; for (let k = 0; k < 1000; k++){ const s = new Set(); let rep = false; for (let i = 0; i < sn.v; i++){ const d = rnd(365); if (s.has(d)){ rep = true; break; } s.add(d); } if (rep) c++; } sim = [sn.v, c]; draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false});
+  let grupo = null, sim = null;
+  const P = n => { let q = 1; for (let i = 0; i < n; i++) q *= (365 - i) / 365; return 1 - q; };
+  const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], DM = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const dia = d => { let m = 0; while (d >= DM[m]){ d -= DM[m]; m++; } return `${d + 1}/${MES[m]}`; };
+  b.onDraw = () => { b.view(-6, 82, -.09, 1.06);
+    chartAxes(b, {xticks: [0, 10, 20, 30, 40, 50, 60, 70, 80], yticks: [0, .25, .5, .75, 1], fx: x => fmt(x, 0), fy: y => fmt(100 * y, 0) + '%', x0: 0, y0: 0, xlabel: 'pessoas', ylabel: 'probabilidade'});
+    b.fn(P, {color: C.acc, lw: 2.5}, 1, 80, 79); const n = sn.v;
+    b.line(n, 0, n, P(n), {color: C.acc2, dash: [4, 4], lw: 1.5}); b.line(0, P(n), n, P(n), {color: C.acc2, dash: [4, 4], lw: 1.5}); b.dot(n, P(n), {fill: C.acc2, r: 6});
+    if (sim && sim[0] === n) b.dot(n, sim[1] / 1000, {fill: C.blue, r: 5}); };
+  function draw(){ b.draw(); const n = sn.v;
+    let g = ''; if (grupo){ const c = {}; grupo.forEach(d => c[d] = (c[d] || 0) + 1); const rep = Object.entries(c).filter(([, k]) => k > 1); g = `<br>Grupo sorteado: ${rep.length ? '<span class="ok">há coincidências</span>: ' + rep.map(([d, k]) => `${dia(+d)} (${k} pessoas)`).join(', ') : '<span class="bad">nenhuma coincidência</span>'}`; }
+    out.innerHTML = `P(pelo menos dois iguais) = 1 - (365 · 364 · ... · ${366 - n}) / 365<sup>${n}</sup><br><span class="big">≈ ${fmt(100 * P(n), 1)}%</span>` + g + (sim && sim[0] === n ? `<br>Em 1 000 grupos simulados: ${sim[1]} com coincidência (${fmt(sim[1] / 10, 1)}%), ponto azul no gráfico.` : '') + '<div class="hint">Modelo com 365 dias equiprováveis, sem 29 de fevereiro.</div>'; }
+  draw();
+});
+
+tab('roleta', 'Roleta e probabilidade geométrica',
+ 'Na roleta, a probabilidade de cada cor é proporcional ao ângulo do setor. Ajuste os ângulos (a soma é sempre 360°) e gire a roleta muitas vezes. No modo "ônibus", a probabilidade é a razão entre comprimentos: com ônibus a cada 15 minutos e chegada ao acaso, a chance de esperar no máximo 5 minutos é 5/15.',
+ (ctl, stg) => {
+  const md = select(ctl, 'Modo', [['roleta', 'roleta'], ['onibus', 'ponto de ônibus']], () => { vis(); reset(); });
+  const sa = slider(ctl, {label: 'Setor A', min: 0, max: 360, step: 15, value: 180, fmt: v => v + '°'}, () => fixA(0)), sb = slider(ctl, {label: 'Setor B', min: 0, max: 360, step: 15, value: 90, fmt: v => v + '°'}, () => fixA(1)), sc = slider(ctl, {label: 'Setor C', min: 0, max: 360, step: 15, value: 60, fmt: v => v + '°'}, () => fixA(2));
+  const bp = btns(ctl); button(bp, '180°, 120°, 60°', () => { sa.v = 180; sb.v = 120; sc.v = 60; reset(); }); button(bp, '180°, 90°, 60°, 30°', () => { sa.v = 180; sb.v = 90; sc.v = 60; reset(); });
+  const sT = slider(ctl, {label: 'Intervalo entre ônibus', min: 5, max: 30, value: 15, unit: 'min'}, () => { sW.setMax(sT.v); reset(); }), sW = slider(ctl, {label: 'Espera máxima aceitável', min: 1, max: 15, value: 5, unit: 'min'}, () => reset());
+  const bb = btns(ctl);
+  button(bb, 'Girar 1 vez', () => run(1), true); button(bb, 'Girar 100 vezes', () => run(100)); button(bb, 'Girar 1 000 vezes', () => run(1000));
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7});
+  let cnt, N, last, spin = 0;
+  const ang = () => { const a = [sa.v, sb.v, sc.v]; return a.concat([360 - a[0] - a[1] - a[2]]); };
+  function fixA(i){ const s = [sa, sb, sc]; let a = s.map(x => x.v); const over = a.reduce((x, y) => x + y, 0) - 360; if (over > 0){ for (let j = 2; j >= 0 && a.reduce((x, y) => x + y, 0) > 360; j--) if (j !== i){ s[j].v = Math.max(0, s[j].v - (a.reduce((x, y) => x + y, 0) - 360)); a = s.map(x => x.v); } } reset(); }
+  function vis(){ const r = md.value === 'roleta'; [sa, sb, sc].forEach(s => s.wrap.style.display = r ? '' : 'none'); bp.style.display = r ? '' : 'none'; [sT, sW].forEach(s => s.wrap.style.display = r ? 'none' : ''); bb.children[0].textContent = r ? 'Girar 1 vez' : 'Chegar 1 vez'; bb.children[1].textContent = r ? 'Girar 100 vezes' : 'Chegar 100 vezes'; bb.children[2].textContent = r ? 'Girar 1 000 vezes' : 'Chegar 1 000 vezes'; }
+  function reset(){ cnt = [0, 0, 0, 0]; N = 0; last = null; b.draw(); }
+  function run(k){ for (let i = 0; i < k; i++){ if (md.value === 'roleta'){ const t = Math.random() * 360, a = ang(); let s = 0, j = 0; while (j < 3 && t >= s + a[j]){ s += a[j]; j++; } cnt[j]++; last = t; } else { const t = Math.random() * sT.v; last = t; cnt[t <= sW.v ? 0 : 1]++; } N++; } b.draw(); }
+  const NM = ['A', 'B', 'C', 'D'], COL = [C.acc, C.acc2, C.blue, C.gold];
+  b.onDraw = () => {
+    if (md.value === 'roleta'){
+      b.view(-1.3, 3.6, -1.25, 1.25); const a = ang(); let s = 0;
+      a.forEach((x, j) => { if (x <= 0) return; b.arc(0, 0, 1, (90 - s - x) * Math.PI / 180, (90 - s) * Math.PI / 180, {fill: COL[j], color: '#fff', lw: 2}); const m = (90 - s - x / 2) * Math.PI / 180; b.text(NM[j], .62 * Math.cos(m), .62 * Math.sin(m), {bold: true, color: '#fff', size: 16}); s += x; });
+      if (last != null){ const m = (90 - last) * Math.PI / 180; b.arrow(0, 0, 1.05 * Math.cos(m), 1.05 * Math.sin(m), {lw: 3}); }
+      b.dot(0, 0, {fill: C.ink, r: 6});
+      a.forEach((x, j) => { const y = .9 - j * .5; b.text(`${NM[j]}: ${x}° → ${x}/360 ≈ ${fmt(x / 360, 3)}`, 1.4, y, {align: 'left', size: 13, color: COL[j] === C.gold ? '#a07d1c' : COL[j], bold: true}); if (N) b.text(`observado: ${cnt[j]} (${fmt(cnt[j] / N, 3)})`, 1.4, y - .2, {align: 'left', size: 12, color: C.muted}); });
+    } else {
+      const T = sT.v, W = sW.v; b.view(-2, T + 2, -3, 4);
+      b.line(0, 0, T, 0, {lw: 3}); b.rect(0, -.25, W, .5, {fill: 'rgba(42,157,143,.5)', stroke: null}); b.rect(W, -.25, T - W, .5, {fill: 'rgba(231,111,81,.25)', stroke: null});
+      [0, T].forEach(x => { b.text('🚌', x, 1.2, {size: 26}); b.line(x, -.6, x, .6, {lw: 2}); });
+      b.text(`espera ≤ ${W} min`, W / 2, -1.2, {size: 12, color: C.acc}); b.text(`espera maior que ${W} min`, (W + T) / 2, -2, {size: 12, color: C.acc2});
+      b.text(`0 min`, 0, -.8, {size: 11, color: C.muted}); b.text(`${T} min`, T, -.8, {size: 11, color: C.muted}); b.text(`${W}`, W, .55, {size: 11, color: C.muted});
+      if (last != null){ b.dot(last, 0, {fill: C.ink, r: 6}); b.text('chegada', last, 0, {dy: -42, size: 12}); }
+      b.text('tempo de espera até o próximo ônibus (min)', T / 2, 3.2, {size: 12, color: C.muted});
+    }
+    out.innerHTML = md.value === 'roleta' ? `Giros: <b>${N}</b>${N ? '<br>' + ang().map((x, j) => x > 0 ? `${NM[j]}: ${cnt[j]}` : '').filter(Boolean).join(' · ') : ''}<div class="hint">A soma das probabilidades de todos os setores é 360/360 = 1.</div>`
+      : `P(espera ≤ ${sW.v} min) = ${sW.v}/${sT.v} ≈ <span class="big">${fmt(sW.v / sT.v, 3)}</span>${N ? `<br>Chegadas simuladas: ${N}; espera ≤ ${sW.v} min em ${cnt[0]} (${fmt(cnt[0] / N, 3)})` : ''}<div class="hint">O instante de chegada é sorteado ao acaso no intervalo; a probabilidade é a razão entre o comprimento favorável e o comprimento total.</div>`;
+  };
+  vis(); reset();
+});
+
+tab('monte-carlo', 'Monte Carlo: estimando π',
+ 'Sorteiam-se pontos ao acaso em um quadrado de lado 2 com um círculo de raio 1 inscrito. A fração dos pontos que caem no círculo aproxima a razão entre as áreas, π/4; multiplicada por 4, aproxima π.',
+ (ctl, stg) => {
+  const bb = btns(ctl);
+  [10, 100, 1000, 10000].forEach(k => button(bb, `+${k} pontos`, () => { for (let i = 0; i < k; i++){ const x = Math.random() * 2 - 1, y = Math.random() * 2 - 1; pts.push([x, y]); if (x * x + y * y <= 1) dentro++; } draw(); }, k === 1000));
+  button(btns(ctl), 'Recomeçar', () => { pts = []; dentro = 0; draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6});
+  let pts = [], dentro = 0;
+  b.view(-1.1, 2.8, -1.1, 1.1);
+  b.onDraw = () => { b.rect(-1, -1, 2, 2, {fill: '#fff', color: C.ink, lw: 1.5}); b.circle(0, 0, 1, {color: C.acc, lw: 2});
+    const c = b.ctx; c.save(); pts.slice(-20000).forEach(([x, y]) => { c.fillStyle = x * x + y * y <= 1 ? C.acc : C.acc2; c.fillRect(b.X(x) - 1.2, b.Y(y) - 1.2, 2.4, 2.4); }); c.restore();
+    if (pts.length) { b.text(`4 · ${dentro} / ${pts.length}`, 1.95, .2, {size: 15}); b.text(`≈ ${fmt(4 * dentro / pts.length, 4)}`, 1.95, -.15, {size: 22, bold: true}); } };
+  function draw(){ b.draw(); out.innerHTML = `Pontos: <b>${pts.length}</b>; no círculo: <b>${dentro}</b><br>Estimativa: ${pts.length ? `<span class="big">${fmt(4 * dentro / pts.length, 4)}</span>` : '-'}<br>π ≈ 3,1416${pts.length ? `; erro: ${fmt(Math.abs(4 * dentro / pts.length - Math.PI), 4)}` : ''}<div class="hint">Para melhorar a estimativa em uma casa decimal, são necessários cerca de 100 vezes mais pontos.</div>`; }
+  draw();
+});
+
+tab('arvore-urna', 'Árvore de probabilidades',
+ 'Uma urna tem bolas vermelhas e azuis, e retiram-se duas bolas, com ou sem reposição. Na árvore, multiplicam-se as probabilidades ao longo de cada caminho e somam-se os caminhos que formam o evento. Escolha um evento para destacar os seus caminhos.',
+ (ctl, stg) => {
+  const sv = slider(ctl, {label: 'Bolas vermelhas', min: 1, max: 6, value: 3}, () => b.draw()), sz = slider(ctl, {label: 'Bolas azuis', min: 1, max: 6, value: 2}, () => b.draw());
+  const rep = select(ctl, 'Retiradas', [['sem', 'sem reposição'], ['com', 'com reposição']], () => b.draw());
+  const ev = select(ctl, 'Evento', [['vv', 'duas vermelhas'], ['aa', 'duas azuis'], ['dif', 'cores diferentes'], ['umv', 'pelo menos uma vermelha']], () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.6, equal: false});
+  const fr = (a, c) => { const g = gcd(a, c); return `${a / g}/${c / g}`; };
+  b.onDraw = () => {
+    const V = sv.v, A = sz.v, T = V + A, sem = rep.value === 'sem';
+    b.view(-.3, 4.2, -.3, 4.3);
+    const first = [['V', V, T], ['A', A, T]]; const leaves = [];
+    b.dot(0, 2, {fill: C.ink, r: 5});
+    first.forEach(([c1, n1, d1], i) => { const y1 = i ? 1 : 3; const col1 = c1 === 'V' ? C.acc2 : C.blue;
+      b.line(0, 2, 1.3, y1, {color: C.muted, lw: 1.5}); b.text(`${n1}/${d1}`, .65, (2 + y1) / 2, {bg: '#fff', size: 12, dy: i ? 10 : -10}); b.dot(1.3, y1, {fill: col1, color: C.ink, lw: 1, r: 11});
+      const n2v = sem && c1 === 'V' ? V - 1 : V, n2a = sem && c1 === 'A' ? A - 1 : A, d2 = sem ? T - 1 : T;
+      [['V', n2v], ['A', n2a]].forEach(([c2, n2], j) => { const y2 = y1 + (j ? -.5 : .5); const col2 = c2 === 'V' ? C.acc2 : C.blue;
+        const k = c1 + c2, num = n1 * n2, den = d1 * d2, on = {vv: k === 'VV', aa: k === 'AA', dif: k === 'VA' || k === 'AV', umv: k !== 'AA'}[ev.value];
+        b.line(1.42, y1, 2.6, y2, {color: on ? C.acc : C.muted, lw: on ? 3 : 1.5}); b.text(`${n2}/${d2}`, 2.0, (y1 + y2) / 2, {bg: '#fff', size: 12, dy: j ? 8 : -8}); b.dot(2.72, y2, {fill: col2, color: C.ink, lw: 1, r: 11});
+        b.text(`${k}: ${n1}/${d1} · ${n2}/${d2} = ${num ? fr(num, den) : '0'}`, 2.95, y2, {align: 'left', size: 13, bold: on, color: on ? C.acc : C.ink}); leaves.push({on, num, den}); }); });
+    const den = leaves[0].den, num = leaves.filter(l => l.on).reduce((s, l) => s + l.num * den / l.den, 0);
+    const nm = {vv: 'duas vermelhas', aa: 'duas azuis', dif: 'cores diferentes', umv: 'pelo menos uma vermelha'}[ev.value];
+    out.innerHTML = `Urna: ${V} vermelhas e ${A} azuis, ${sem ? 'sem' : 'com'} reposição<br>P(${nm}) = <span class="big">${num ? fr(num, den) : '0'}</span> ≈ ${fmt(num / den, 3)}<div class="hint">${sem ? 'Sem reposição, a segunda retirada depende da primeira: as probabilidades do segundo nível mudam.' : 'Com reposição, as retiradas são independentes: o segundo nível repete o primeiro.'}</div>`;
+  };
+  b.draw();
+});
+
+tab('binomial', 'Distribuição binomial',
+ 'Repete-se n vezes, de forma independente, um experimento com probabilidade p de sucesso. A probabilidade de k sucessos é C(n, k) · p<sup>k</sup> · (1 - p)<sup>n - k</sup>. Exemplo: quem responde ao acaso a 5 questões com 5 alternativas tem n = 5 e p = 1/5.',
+ (ctl, stg) => {
+  const sn = slider(ctl, {label: 'Número de repetições (n)', min: 1, max: 30, value: 5}, () => { if (sk.v > sn.v) sk.v = sn.v; sk.setMax(sn.v); b.draw(); });
+  const sp = slider(ctl, {label: 'Probabilidade de sucesso (p)', min: .05, max: .95, step: .05, value: .2, fmt: v => fmt(v, 2)}, () => b.draw());
+  const sk = slider(ctl, {label: 'Número de sucessos destacado (k)', min: 0, max: 5, value: 3}, () => b.draw());
+  const bb = btns(ctl); button(bb, 'Prova no chute: n = 5, p = 1/5', () => { sn.v = 5; sk.setMax(5); sp.v = .2; sk.v = 3; b.draw(); }); button(bb, '10 moedas', () => { sn.v = 10; sk.setMax(10); sp.v = .5; sk.v = 5; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false});
+  b.onClick = (x) => { const k = Math.round(x); if (k >= 0 && k <= sn.v){ sk.v = k; b.draw(); } };
+  b.onDraw = () => { const n = sn.v, p = sp.v, k = sk.v; const P = Array.from({length: n + 1}, (_, i) => binom(n, i) * Math.pow(p, i) * Math.pow(1 - p, n - i)); const ym = Math.max(...P) * 1.15;
+    b.view(-1.2, n + .8, -ym * .1, ym * 1.08);
+    chartAxes(b, {xticks: [], yticks: ticks(0, ym, 5), fy: y => fmt(y, 3), x0: -.7, y0: 0, ylabel: 'probabilidade'});
+    P.forEach((v, i) => { b.rect(i - .38, 0, .76, v, {fill: i === k ? C.acc2 : C.acc, stroke: null}); if (n <= 20 || i % 2 === 0) b.text(String(i), i, 0, {dy: 12, size: 11}); });
+    b.text('número de sucessos', n + .7, 0, {dy: 26, align: 'right', size: 12});
+    const Pk = P[k], mean = n * p;
+    out.innerHTML = `P(${k} sucessos) = C(${n}, ${k}) · ${fmt(p, 2)}<sup>${k}</sup> · ${fmt(1 - p, 2)}<sup>${n - k}</sup><br>= ${binom(n, k)} · ${fmt(Math.pow(p, k), 5)} · ${fmt(Math.pow(1 - p, n - k), 5)} ≈ <span class="big">${fmt(Pk, 4)}</span><br>Média: n · p = ${fmt(mean, 2)}<br>P(pelo menos ${k}) ≈ ${fmt(P.slice(k).reduce((a, c) => a + c, 0), 4)}<div class="hint">A soma de todas as barras é 1: são os termos do desenvolvimento de [p + (1 - p)]ⁿ.</div>`; };
+  b.draw();
+});
+
+boot();
+</script>
+</body>
+</html>

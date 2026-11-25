@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estatística com dados</title>
+<style>
+:root{--bg:#f6f3ec;--ink:#1f2a37;--muted:#5b6574;--card:#fffdf8;--line:#e3dccd;--accent:#2a9d8f;--accent2:#e76f51;--blue:#3a6ea5;--gold:#e9c46a;--purple:#7b5ea7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.45}
+header{padding:28px 20px 10px;max-width:1280px;margin:0 auto}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.01em}
+header>p{margin:4px 0;color:var(--muted);max-width:860px}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{font:inherit;font-size:.9rem;color:var(--ink);background:#fff;border:1px solid var(--line);padding:5px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button:hover{border-color:var(--accent)}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+section.tab h2{font-size:1.35rem;margin:22px 0 4px;padding-top:6px;border-top:2px solid var(--ink)}
+section.tab>p.desc{margin:2px 0 14px;color:var(--muted);font-size:.95rem;max-width:900px}
+.panel{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media (max-width:820px){.panel{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.stage{padding:10px}
+.stage canvas{width:100%;display:block;border-radius:10px;background:#fff;touch-action:none}
+.ctl{display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.ctl .lab{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.ctl .lab b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+.ctl select,.ctl input[type=text],.ctl input[type=number],.ctl textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink);width:100%}
+.ctl textarea{min-height:90px;resize:vertical}
+.chk{display:flex;gap:7px;align-items:center;font-size:.88rem;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button.b{font:inherit;font-size:.86rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;color:var(--ink)}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.b.pri:hover{filter:brightness(1.07);color:#fff}
+.out{font-size:.9rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55}
+.out b{font-variant-numeric:tabular-nums}
+.out .big{font-size:1.15rem;font-weight:600}
+.out table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+.out td,.out th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+.out th{color:var(--muted);font-weight:600}
+.out td:first-child,.out th:first-child{text-align:left}
+.note{background:#fff4e6;border:1px solid #f2d3a8;border-radius:8px;padding:8px 10px;font-size:.84rem;color:#7a4b12}
+.ok{color:#1f7a4d;font-weight:600}.bad{color:#b3412a;font-weight:600}
+.hint{font-size:.8rem;color:var(--muted)}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
+.m{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+
+</style>
+</head>
+<body>
+<header>
+<h1>Estatística com dados</h1>
+<p>Medidas de centro e de dispersão, gráficos, box-plot, reta de ajuste, correlação, amostragem e margem de erro.</p>
+<nav class="tabs" aria-label="Abas"></nav>
+</header>
+<main></main>
+<footer>Objetos interativos de apoio ao material didático de Matemática. Os dados marcados como fictícios foram criados apenas para fins didáticos.</footer>
+<script>
+/* Biblioteca comum dos objetos interativos (sem dependências externas). */
+const C = {ink:'#1f2a37', muted:'#5b6574', line:'#e3dccd', grid:'#eee8dc', acc:'#2a9d8f', acc2:'#e76f51', blue:'#3a6ea5', gold:'#e9c46a', purple:'#7b5ea7', green:'#4c9a2a', red:'#c0392b', pale:'#f6f3ec'};
+const PAL = ['#2a9d8f','#e76f51','#3a6ea5','#e9c46a','#7b5ea7','#4c9a2a','#d1495b','#8d6e63','#00798c','#f4a261'];
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+/* Números no padrão brasileiro */
+function fmt(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: 0});
+  return s === '-0' ? '0' : s;
+}
+function fix(x, d = 2){
+  if (!Number.isFinite(x)) return '-';
+  const s = x.toLocaleString('pt-BR', {maximumFractionDigits: d, minimumFractionDigits: d});
+  return /^-0(,0*)?$/.test(s) ? s.slice(1) : s;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (n) => Math.floor(Math.random() * n);
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ [a, b] = [b, a % b]; } return a; }
+function binom(n, k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+function fact(n){ let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* ---------- Controles ---------- */
+function slider(parent, o, cb){
+  const val = h('b');
+  const inp = h('input', {type: 'range', min: o.min, max: o.max, step: o.step ?? 1, value: o.value});
+  const show = () => { const v = +inp.value; val.innerHTML = o.fmt ? o.fmt(v) : fmt(v, 3) + (o.unit ? ' ' + o.unit : ''); };
+  inp.addEventListener('input', () => { show(); cb && cb(+inp.value); });
+  const wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: o.label}), val), inp);
+  parent.append(wrap); show();
+  return {el: inp, wrap, get v(){ return +inp.value; }, set v(x){ inp.value = x; show(); }, refresh: show,
+          setMax(m){ inp.max = m; show(); }, setMin(m){ inp.min = m; show(); }};
+}
+function button(parent, label, cb, pri){ const b = h('button', {class: 'b' + (pri ? ' pri' : ''), onclick: cb}, label); parent.append(b); return b; }
+function btns(parent){ const d = h('div', {class: 'btns'}); parent.append(d); return d; }
+function select(parent, label, opts, cb, value){
+  const s = h('select');
+  opts.forEach(([v, t]) => s.append(h('option', {value: v}, t)));
+  if (value != null) s.value = value;
+  s.addEventListener('change', () => cb && cb(s.value));
+  s.wrap = h('div', {class: 'ctl'}, h('div', {class: 'lab'}, h('span', {html: label})), s); parent.append(s.wrap);
+  return s;
+}
+function check(parent, label, on, cb){
+  const i = h('input', {type: 'checkbox'}); i.checked = !!on;
+  i.addEventListener('change', () => cb && cb(i.checked));
+  parent.append(h('label', {class: 'chk'}, i, h('span', {html: label})));
+  return i;
+}
+function output(parent, cls){ const d = h('div', {class: cls || 'out'}); parent.append(d); return d; }
+function note(parent, html){ const d = h('div', {class: 'note', html}); parent.append(d); return d; }
+function hint(parent, html){ const d = h('div', {class: 'hint', html}); parent.append(d); return d; }
+
+/* ---------- Quadro de desenho em coordenadas ---------- */
+class Board {
+  constructor(parent, o = {}){
+    this.o = Object.assign({xmin: -10, xmax: 10, ymin: -10, ymax: 10, aspect: 4 / 3, equal: true, pad: 0}, o);
+    this.cv = h('canvas'); parent.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.handles = []; this.drag = null; this.onDraw = null; this.onClick = null; this.onMove = null;
+    this.cv.addEventListener('pointerdown', e => this._down(e));
+    this.cv.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => { if (this.press){ const p = this.press; this.press = null; if (!p.moved && this.onClick) this.onClick(this.ix(p.px), this.iy(p.py), p.px, p.py, p.e); }
+      if (this.drag){ this.drag = null; this.cv.style.cursor = ''; this.onRelease && this.onRelease(); } });
+    new ResizeObserver(() => this.resize()).observe(this.cv);
+    this.resize();
+  }
+  view(xmin, xmax, ymin, ymax){ Object.assign(this.o, {xmin, xmax, ymin, ymax}); this._fit(); }
+  resize(){
+    const w = this.cv.clientWidth || 600;
+    const hgt = Math.round(Math.min(w / this.o.aspect, this.o.maxh || 560));
+    this.cv.style.height = hgt + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(hgt * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = hgt; this._fit(); this.draw();
+  }
+  _fit(){
+    let {xmin, xmax, ymin, ymax, equal} = this.o;
+    const W = this.W, H = this.H;
+    let sx = W / (xmax - xmin), sy = H / (ymax - ymin);
+    if (equal){
+      const s = Math.min(sx, sy);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+      xmin = cx - W / s / 2; xmax = cx + W / s / 2; ymin = cy - H / s / 2; ymax = cy + H / s / 2; sx = sy = s;
+    }
+    this.v = {xmin, xmax, ymin, ymax, sx, sy};
+  }
+  X(x){ return (x - this.v.xmin) * this.v.sx; }
+  Y(y){ return this.H - (y - this.v.ymin) * this.v.sy; }
+  ix(px){ return this.v.xmin + px / this.v.sx; }
+  iy(py){ return this.v.ymin + (this.H - py) / this.v.sy; }
+  _pos(e){ const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  _down(e){
+    const [px, py] = this._pos(e);
+    let best = null, bd = 1e9;
+    for (const hd of this.handles){
+      if (hd.hidden && hd.hidden()) continue;
+      const [x, y] = hd.get();
+      const d = Math.hypot(this.X(x) - px, this.Y(y) - py);
+      if (d < (hd.r || 14) && d < bd){ bd = d; best = hd; }
+    }
+    if (best){ this.drag = best; this.cv.setPointerCapture(e.pointerId); this.cv.style.cursor = 'grabbing'; e.preventDefault(); }
+    else if (this.onDragEmpty){ this.press = {px, py, moved: false, e}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    else if (this.onClick) this.onClick(this.ix(px), this.iy(py), px, py, e);
+  }
+  _move(e){
+    const [px, py] = this._pos(e);
+    if (this.drag){ this.drag.set(this.ix(px), this.iy(py)); this.draw(); return; }
+    if (this.press){ const dx = px - this.press.px, dy = py - this.press.py; if (Math.hypot(dx, dy) > 4) this.press.moved = true; if (this.press.moved){ this.onDragEmpty(dx, dy); this.press.px = px; this.press.py = py; this.draw(); } return; }
+    let over = false;
+    for (const hd of this.handles){ if (hd.hidden && hd.hidden()) continue; const [x, y] = hd.get(); if (Math.hypot(this.X(x) - px, this.Y(y) - py) < (hd.r || 14)) over = true; }
+    this.cv.style.cursor = over ? 'grab' : (this.onClick ? 'pointer' : '');
+    this.onMove && this.onMove(this.ix(px), this.iy(py), px, py);
+  }
+  handle(get, set, opt = {}){ const hd = Object.assign({get, set}, opt); this.handles.push(hd); return hd; }
+  draw(){ if (!this.W) return; this.ctx.clearRect(0, 0, this.W, this.H); this.onDraw && this.onDraw(this.ctx); }
+  /* primitivas (coordenadas do mundo) */
+  grid(step = 1, color = C.grid){
+    const c = this.ctx, v = this.v; c.save(); c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
+    for (let x = Math.ceil(v.xmin / step) * step; x <= v.xmax; x += step){ const p = Math.round(this.X(x)) + .5; c.moveTo(p, 0); c.lineTo(p, this.H); }
+    for (let y = Math.ceil(v.ymin / step) * step; y <= v.ymax; y += step){ const p = Math.round(this.Y(y)) + .5; c.moveTo(0, p); c.lineTo(this.W, p); }
+    c.stroke(); c.restore();
+  }
+  axes(o = {}){
+    const c = this.ctx, v = this.v; const st = o.step || 1, lab = o.labels !== false;
+    c.save(); c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+    c.moveTo(0, this.Y(0)); c.lineTo(this.W, this.Y(0)); c.moveTo(this.X(0), 0); c.lineTo(this.X(0), this.H); c.stroke();
+    if (lab){
+      c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top';
+      const sx = o.stepx || st, sy = o.stepy || st;
+      for (let x = Math.ceil(v.xmin / sx) * sx; x <= v.xmax; x += sx){ if (Math.abs(x) < 1e-9) continue; c.fillText(o.fx ? o.fx(x) : fmt(x, 3), this.X(x), this.Y(0) + 4); }
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (let y = Math.ceil(v.ymin / sy) * sy; y <= v.ymax; y += sy){ if (Math.abs(y) < 1e-9) continue; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), this.X(0) - 5, this.Y(y)); }
+      if (o.xl){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.xl, this.W - 4, this.Y(0) - 4); }
+      if (o.yl){ c.textAlign = 'left'; c.textBaseline = 'top'; c.font = 'italic 13px Cambria Math, serif'; c.fillText(o.yl, this.X(0) + 6, 4); }
+    }
+    c.restore();
+  }
+  line(x1, y1, x2, y2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.moveTo(this.X(x1), this.Y(y1)); c.lineTo(this.X(x2), this.Y(y2)); c.stroke(); c.restore(); }
+  path(pts, s = {}, close = false){
+    if (!pts.length) return; const c = this.ctx; c.save(); this._st(s); c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(this.X(p[0]), this.Y(p[1])) : c.moveTo(this.X(p[0]), this.Y(p[1])));
+    if (close) c.closePath(); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore();
+  }
+  poly(pts, s = {}){ this.path(pts, s, true); }
+  fn(f, s = {}, a = this.v.xmin, b = this.v.xmax, n = 400){
+    const c = this.ctx; c.save(); this._st(s); c.beginPath(); let pen = false;
+    for (let i = 0; i <= n; i++){ const x = a + (b - a) * i / n, y = f(x);
+      if (!Number.isFinite(y) || Math.abs(this.Y(y)) > 1e5){ pen = false; continue; }
+      pen ? c.lineTo(this.X(x), this.Y(y)) : c.moveTo(this.X(x), this.Y(y)); pen = true; }
+    c.stroke(); c.restore();
+  }
+  circle(x, y, r, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.ellipse(this.X(x), this.Y(y), Math.abs(r * this.v.sx), Math.abs(r * this.v.sy), 0, 0, 2 * Math.PI); if (s.fill) c.fill(); if (s.stroke !== null) c.stroke(); c.restore(); }
+  arc(x, y, r, a1, a2, s = {}){ const c = this.ctx; c.save(); this._st(s); c.beginPath(); c.arc(this.X(x), this.Y(y), r * this.v.sx, -a1, -a2, a2 > a1); if (s.fill){ c.lineTo(this.X(x), this.Y(y)); c.fill(); } if (s.stroke !== null) c.stroke(); c.restore(); }
+  dot(x, y, s = {}){ const c = this.ctx; c.save(); c.fillStyle = s.fill || C.ink; c.strokeStyle = s.color || '#fff'; c.lineWidth = s.lw ?? 2; c.beginPath(); c.arc(this.X(x), this.Y(y), s.r || 5, 0, 2 * Math.PI); c.fill(); if (s.lw !== 0) c.stroke(); c.restore(); }
+  text(t, x, y, s = {}){
+    const c = this.ctx; c.save(); c.font = s.font || ((s.bold ? '600 ' : '') + (s.size || 13) + 'px Segoe UI, sans-serif');
+    c.fillStyle = s.color || C.ink; c.textAlign = s.align || 'center'; c.textBaseline = s.base || 'middle';
+    const px = this.X(x) + (s.dx || 0), py = this.Y(y) + (s.dy || 0);
+    if (s.bg){ const w = c.measureText(t).width; const hh = (s.size || 13) + 6; let lx = px - w / 2 - 4; if (c.textAlign === 'left') lx = px - 4; if (c.textAlign === 'right') lx = px - w - 4; c.fillStyle = s.bg; c.fillRect(lx, py - hh / 2, w + 8, hh); c.fillStyle = s.color || C.ink; }
+    c.fillText(t, px, py); c.restore();
+  }
+  arrow(x1, y1, x2, y2, s = {}){
+    this.line(x1, y1, x2, y2, s);
+    const c = this.ctx, X2 = this.X(x2), Y2 = this.Y(y2), a = Math.atan2(Y2 - this.Y(y1), X2 - this.X(x1)), L = s.head || 10;
+    c.save(); c.fillStyle = s.color || C.ink; c.beginPath(); c.moveTo(X2, Y2);
+    c.lineTo(X2 - L * Math.cos(a - .4), Y2 - L * Math.sin(a - .4)); c.lineTo(X2 - L * Math.cos(a + .4), Y2 - L * Math.sin(a + .4)); c.closePath(); c.fill(); c.restore();
+  }
+  rect(x, y, w, hh, s = {}){ this.poly([[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]], s); }
+  _st(s){ const c = this.ctx; c.strokeStyle = s.color || C.ink; c.lineWidth = s.lw ?? 2; c.fillStyle = s.fill || 'transparent'; c.setLineDash(s.dash || []); c.globalAlpha = s.alpha ?? 1; c.lineJoin = 'round'; c.lineCap = 'round'; if (s.stroke === null) c.strokeStyle = 'transparent'; }
+}
+
+/* Gráfico simples de barras/linhas em coordenadas de pixel com eixos rotulados */
+function chartAxes(b, o){
+  // b: Board com equal:false; o: {xlabel, ylabel, xticks:[...], yticks:[...], fx, fy}
+  const c = b.ctx, v = b.v; c.save();
+  c.strokeStyle = C.line; c.lineWidth = 1; c.fillStyle = C.muted; c.font = '11px Segoe UI, sans-serif';
+  (o.yticks || []).forEach(y => { const p = Math.round(b.Y(y)) + .5; c.beginPath(); c.moveTo(b.X(v.xmin), p); c.lineTo(b.W, p); c.stroke();
+    c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(o.fy ? o.fy(y) : fmt(y, 3), b.X(o.x0 ?? v.xmin) - 4, b.Y(y)); });
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  (o.xticks || []).forEach(x => c.fillText(o.fx ? o.fx(x) : fmt(x, 3), b.X(x), b.Y(o.y0 ?? 0) + 4));
+  c.strokeStyle = C.ink; c.lineWidth = 1.2; c.beginPath();
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.W, b.Y(o.y0 ?? 0));
+  c.moveTo(b.X(o.x0 ?? v.xmin), b.Y(o.y0 ?? 0)); c.lineTo(b.X(o.x0 ?? v.xmin), 0); c.stroke();
+  c.fillStyle = C.ink; c.font = '12px Segoe UI, sans-serif';
+  if (o.xlabel){ c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(o.xlabel, b.W - 4, b.Y(o.y0 ?? 0) - 4); }
+  if (o.ylabel){ c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText(o.ylabel, b.X(o.x0 ?? v.xmin) + 6, 2); }
+  c.restore();
+}
+function niceStep(range, n = 6){ const r = range / n, p = Math.pow(10, Math.floor(Math.log10(r))); const m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+function ticks(a, b, n = 6){ const s = niceStep(b - a, n); const out = []; for (let t = Math.ceil(a / s) * s; t <= b + 1e-9; t += s) out.push(+t.toFixed(10)); return out; }
+
+/* ---------- Abas ---------- */
+const TABS = [];
+function tab(id, title, desc, init){ TABS.push({id, title, desc, init}); }
+function boot(){
+  const nav = document.querySelector('nav.tabs'), main = document.querySelector('main');
+  TABS.forEach(t => {
+    t.btn = h('button', {onclick: () => { location.hash = 'aba-' + t.id; }}, t.title); nav.append(t.btn);
+    t.sec = h('section', {class: 'tab', id: 'sec-' + t.id}, h('h2', null, t.title), h('p', {class: 'desc', html: t.desc}));
+    main.append(t.sec);
+  });
+  function show(){
+    const id = (location.hash.match(/^#aba-(.+)$/) || [])[1];
+    const t = TABS.find(x => x.id === id) || TABS[0];
+    TABS.forEach(x => { x.sec.classList.toggle('on', x === t); x.btn.classList.toggle('on', x === t); });
+    if (!t.done){ t.done = true; const ctl = h('div', {class: 'card'}), stg = h('div', {class: 'card stage'});
+      t.sec.append(h('div', {class: 'panel'}, ctl, stg)); t.init(ctl, stg); }
+    window.dispatchEvent(new Event('resize'));
+  }
+  window.addEventListener('hashchange', show); show();
+}
+function stageBoard(stg, o){ return new Board(stg, o); }
+
+</script>
+<script>
+/* ===== Estatística ===== */
+const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+const median = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+function quart(a){ const s = [...a].sort((x, y) => x - y), n = s.length, lo = s.slice(0, Math.floor(n / 2)), hi = s.slice(Math.ceil(n / 2)); return {min: s[0], q1: median(lo), md: median(s), q3: median(hi), max: s[n - 1], s}; }
+const varp = a => { const m = mean(a); return mean(a.map(x => (x - m) ** 2)); };
+const vara = a => { const m = mean(a); return a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1); };
+function fitLS(P){ const mx = mean(P.map(p => p[0])), my = mean(P.map(p => p[1])); let sxy = 0, sxx = 0, syy = 0; P.forEach(([x, y]) => { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; syy += (y - my) ** 2; }); const a = sxy / sxx; return {a, b: my - a * mx, r: sxy / Math.sqrt(sxx * syy), mx, my}; }
+function gauss(){ let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+const DATA = {
+  rdA: {nome: 'Tempo de deslocamento, turma A (min, dados fictícios)', v: [5, 8, 10, 10, 12, 12, 15, 15, 15, 18, 20, 20, 20, 22, 25, 25, 25, 28, 30, 30, 30, 32, 35, 35, 40, 40, 45, 50, 55, 70], w: 10, a: 0},
+  notasA: {nome: 'Notas da turma A (0 a 100, dados fictícios)', v: [45, 52, 58, 61, 63, 64, 67, 68, 70, 71, 72, 74, 75, 77, 78, 81, 83, 86, 90, 97], w: 10, a: 40},
+  notasB: {nome: 'Notas da turma B (0 a 100, dados fictícios)', v: [30, 38, 44, 50, 55, 58, 62, 65, 69, 72, 74, 78, 80, 84, 88, 91, 93, 95, 98, 100], w: 10, a: 30},
+};
+function boxplot(b, q, y, o = {}){
+  const iqr = q.q3 - q.q1, lf = q.q1 - 1.5 * iqr, uf = q.q3 + 1.5 * iqr, inn = q.s.filter(x => x >= lf && x <= uf), out = q.s.filter(x => x < lf || x > uf);
+  const wl = Math.min(...inn), wh = Math.max(...inn), hh = o.h || .5, col = o.color || C.acc;
+  b.line(wl, y, q.q1, y, {lw: 2}); b.line(q.q3, y, wh, y, {lw: 2}); b.line(wl, y - hh / 2, wl, y + hh / 2, {lw: 2}); b.line(wh, y - hh / 2, wh, y + hh / 2, {lw: 2});
+  b.rect(q.q1, y - hh, q.q3 - q.q1, 2 * hh, {fill: col + '55', color: C.ink, lw: 2}); b.line(q.md, y - hh, q.md, y + hh, {color: C.acc2, lw: 3.5});
+  out.forEach(x => b.dot(x, y, {fill: '#fff', color: C.acc2, lw: 2, r: 5}));
+  if (o.labels){ [['mín.', wl], ['Q1', q.q1], ['Md', q.md], ['Q3', q.q3], ['máx.', wh]].forEach(([t, x], i) => b.text(`${t} ${fmt(x, 2)}`, x, y + hh + (i % 2 ? .55 : .25), {size: 11, color: C.muted})); }
+  return {out, wl, wh};
+}
+
+tab('equilibrio', 'Média como ponto de equilíbrio',
+ 'Pesos iguais colocados sobre uma régua equilibram-se na média. Arraste os pesos: a régua apoia-se sempre na média, e a soma dos desvios (distâncias com sinal até a média) é zero. A mediana, marcada em laranja, fica no meio dos dados ordenados e quase não se move quando um peso vai para longe.',
+ (ctl, stg) => {
+  let X = [2, 3, 4, 6, 10];
+  const sn = slider(ctl, {label: 'Número de pesos', min: 2, max: 9, value: 5}, () => { while (X.length < sn.v) X.push(1 + rnd(11)); X = X.slice(0, sn.v); b.draw(); });
+  const bb = btns(ctl); button(bb, '2, 3, 4, 6 e 10', () => { X = [2, 3, 4, 6, 10]; sn.v = 5; b.draw(); }); button(bb, 'Afastar o último peso', () => { X[X.length - 1] = 20; b.draw(); });
+  const cm = check(ctl, 'Mostrar a mediana', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 2.1});
+  b.view(-1, 21, -4.2, 4.5);
+  X.forEach(() => {});
+  for (let i = 0; i < 9; i++){ const k = i; b.handle(() => k < X.length ? [X[k], .55 + .9 * stackOf(k)] : [-99, -99], (x) => { if (k < X.length) X[k] = clamp(Math.round(x * 2) / 2, 0, 20); }, {r: 16, hidden: true}); }
+  function stackOf(k){ let c = 0; for (let j = 0; j < k; j++) if (X[j] === X[k]) c++; return c; }
+  b.onDraw = () => {
+    const m = mean(X), md = median(X);
+    b.line(0, 0, 20, 0, {color: '#8d6e63', lw: 10});
+    for (let t = 0; t <= 20; t++){ b.line(t, -.25, t, .25, {color: '#5d4037', lw: 1}); if (t % 2 === 0) b.text(String(t), t, -.8, {size: 12, color: C.muted}); }
+    b.poly([[m, -.2], [m - .7, -1.9], [m + .7, -1.9]], {fill: C.acc, color: C.ink, lw: 1.5}); b.text(`média ${fmt(m, 2)}`, m, -2.4, {bold: true, color: C.acc});
+    if (cm.checked){ b.line(md, -.4, md, 3.8, {color: C.acc2, dash: [5, 4], lw: 2}); b.text(`mediana ${fmt(md, 2)}`, md, 4.15, {bold: true, color: C.acc2}); }
+    X.forEach((x, k) => { const y = .55 + .9 * stackOf(k); b.rect(x - .4, y - .4, .8, .8, {fill: C.blue, color: C.ink, lw: 1.5}); });
+    X.forEach((x, k) => { const d = x - m, y = -3.1 - .25 * (k % 3); if (Math.abs(d) > .01) b.arrow(m, y, x, y, {color: d > 0 ? C.acc : C.acc2, lw: 1.5, head: 7}); });
+    const ds = X.map(x => x - m);
+    out.innerHTML = `Valores: ${[...X].sort((a, c) => a - c).map(x => fmt(x, 1)).join('; ')}<br>Média: <span class="big">${fmt(m, 2)}</span>&nbsp; Mediana: <b>${fmt(md, 2)}</b><br>Desvios: ${ds.map(d => fmt(d, 2)).join('; ')}<br>Soma dos desvios: <b>${fmt(Math.abs(ds.reduce((a, c) => a + c, 0)) < 1e-9 ? 0 : ds.reduce((a, c) => a + c, 0), 2)}</b><div class="hint">As setas na parte de baixo representam os desvios: as verdes (positivos) e as laranja (negativos) se compensam.</div>`;
+  };
+  b.draw();
+});
+
+tab('media-mediana', 'Média, mediana e valores extremos',
+ 'Em uma pequena empresa fictícia, nove funcionários ganham R$ 2 000,00 por mês. Mude o salário do proprietário e observe a média e a mediana: a média é "puxada" pelo valor extremo, enquanto a mediana, uma medida resistente, não se altera.',
+ (ctl, stg) => {
+  const sp = slider(ctl, {label: 'Salário do proprietário', min: 2000, max: 60000, step: 1000, value: 30000, fmt: v => 'R$ ' + fmt(v, 0)}, () => b.draw());
+  const sf = slider(ctl, {label: 'Salário dos funcionários', min: 1500, max: 5000, step: 100, value: 2000, fmt: v => 'R$ ' + fmt(v, 0)}, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 2, equal: false});
+  b.onDraw = () => {
+    const S = Array(9).fill(sf.v).concat([sp.v]), m = mean(S), md = median(S), mx = Math.max(62000, sp.v);
+    b.view(-mx * .08, mx * 1.02, -2.2, 6);
+    chartAxes(b, {xticks: ticks(0, mx, 6), yticks: [], fx: x => fmt(x / 1000, 0) + ' mil', x0: 0, y0: 0, xlabel: 'salário (R$)'});
+    for (let i = 0; i < 9; i++) b.dot(sf.v, .5 + i * .5, {fill: C.blue, r: 7, lw: 1});
+    b.dot(sp.v, .5, {fill: C.purple, r: 9, lw: 1}); b.text('proprietário', sp.v, 1.25, {size: 11, color: C.purple});
+    b.line(m, 0, m, 5.4, {color: C.acc, lw: 2.5, dash: [6, 4]}); b.text(`média R$ ${fmt(m, 0)}`, m, 5.7, {bold: true, color: C.acc, align: 'left', dx: -10});
+    b.line(md, 0, md, 4.8, {color: C.acc2, lw: 2.5}); b.text(`mediana R$ ${fmt(md, 0)}`, md, 5.1, {bold: true, color: C.acc2, align: 'left', dx: 6});
+    const abaixo = S.filter(x => x < m).length;
+    out.innerHTML = `Média: (9 · ${fmt(sf.v, 0)} + ${fmt(sp.v, 0)}) / 10 = <b>R$ ${fmt(m, 0)}</b><br>Mediana: <b>R$ ${fmt(md, 0)}</b> &nbsp; Moda: <b>R$ ${fmt(sf.v, 0)}</b><br>${abaixo} das 10 pessoas ganham menos que a média.<div class="hint">Em distribuições com cauda à direita, como a da renda, a média fica acima da mediana.</div>`;
+  };
+  b.draw();
+});
+
+tab('dados-turma', 'Analisando dados de uma turma',
+ 'Cole ou digite dados numéricos (separados por espaço, ponto e vírgula ou quebra de linha; use vírgula para decimais) ou escolha um conjunto pronto. O objeto calcula as medidas-resumo e mostra o histograma, o diagrama de ramo e folhas, o box-plot e o gráfico de pontos com a média e a mediana. No histograma, mude a amplitude das classes e observe como a forma muda.',
+ (ctl, stg) => {
+  const pre = select(ctl, 'Conjunto de dados', Object.entries(DATA).map(([k, d]) => [k, d.nome]).concat([['meu', 'meus dados (editar abaixo)']]), () => { if (pre.value !== 'meu'){ ta.value = DATA[pre.value].v.join('; '); sw.v = DATA[pre.value].w; sa.v = DATA[pre.value].a; } upd(); });
+  const ta = h('textarea', {rows: 4, style: 'width:100%;font:14px Consolas,monospace;padding:6px;border:1px solid #d9d2c3;border-radius:8px'}); ta.value = DATA.rdA.v.join('; ');
+  ctl.append(ta); ta.oninput = () => { pre.value = 'meu'; upd(); };
+  const vw = select(ctl, 'Gráfico', [['hist', 'histograma'], ['ramo', 'ramo e folhas'], ['box', 'box-plot'], ['pontos', 'gráfico de pontos']], () => upd());
+  const sw = slider(ctl, {label: 'Amplitude das classes', min: 1, max: 25, value: 10}, () => upd()), sa = slider(ctl, {label: 'Início da primeira classe', min: 0, max: 50, value: 0}, () => upd());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.7, equal: false}); const ramo = h('div', {style: 'font:17px Consolas,monospace;padding:16px 24px;line-height:1.7;display:none'}); stg.append(ramo);
+  let V = [];
+  function parse(){ return ta.value.replace(/(\d),(\d)/g, '$1.$2').split(/[\s;\n]+/).map(Number).filter(x => Number.isFinite(x) && ta.value.trim() !== ''); }
+  function upd(){ V = parse(); [sw.wrap, sa.wrap].forEach(w => w.style.display = vw.value === 'hist' ? '' : 'none'); b.cv.style.display = vw.value === 'ramo' ? 'none' : ''; ramo.style.display = vw.value === 'ramo' ? '' : 'none'; b.draw(); summary(); }
+  function summary(){ if (V.length < 2){ out.innerHTML = 'Digite pelo menos dois valores.'; return; } const q = quart(V);
+    out.innerHTML = `n = <b>${V.length}</b><br>Média: <b>${fmt(mean(V), 2)}</b> &nbsp; Mediana: <b>${fmt(q.md, 2)}</b><br>Mínimo: ${fmt(q.min, 2)} &nbsp; Máximo: ${fmt(q.max, 2)}<br>Q1: ${fmt(q.q1, 2)} &nbsp; Q3: ${fmt(q.q3, 2)} &nbsp; AIQ: ${fmt(q.q3 - q.q1, 2)}<br>Desvio padrão: ${fmt(Math.sqrt(varp(V)), 2)} (populacional), ${fmt(Math.sqrt(vara(V)), 2)} (amostral)<div class="hint">Quartis pela convenção das medianas das metades; as planilhas podem usar outra convenção e dar valores um pouco diferentes.</div>`;
+    if (vw.value === 'ramo'){ const R = {}; const s = [...V].sort((a, c) => a - c); s.forEach(x => { const r = Math.floor(x / 10), f = Math.round(x - 10 * r); (R[r] = R[r] || []).push(f); }); const ks = Object.keys(R).map(Number); let html = ''; for (let r = Math.min(...ks); r <= Math.max(...ks); r++) html += `<div><b style="display:inline-block;width:36px;text-align:right">${r}</b> | ${(R[r] || []).join(' ')}</div>`; ramo.innerHTML = html + '<div style="font:13px Segoe UI;color:#5b6574;margin-top:10px">Ramo: dezenas; folha: unidades. Exemplo: 2 | 5 representa 25.</div>'; } }
+  b.onDraw = () => {
+    if (V.length < 2) return; const q = quart(V), lo = Math.min(...V), hi = Math.max(...V);
+    if (vw.value === 'hist'){ const w = sw.v, a0 = Math.min(sa.v, lo); const nc = Math.max(1, Math.ceil((hi - a0 + 1e-9) / w) + (((hi - a0) % w) === 0 ? 1 : 0)); const F = Array(nc).fill(0); V.forEach(x => F[Math.min(nc - 1, Math.floor((x - a0) / w))]++); const fm = Math.max(...F);
+      b.view(a0 - w * nc * .1, a0 + w * nc * 1.03, -fm * .12, fm * 1.15);
+      chartAxes(b, {xticks: Array.from({length: nc + 1}, (_, i) => a0 + i * w), yticks: ticks(0, fm, Math.min(fm, 6)).filter(t => Number.isInteger(t)), fx: x => fmt(x, 1), fy: y => fmt(y, 0), x0: a0, y0: 0, ylabel: 'frequência'});
+      F.forEach((f, i) => { b.rect(a0 + i * w, 0, w, f, {fill: 'rgba(42,157,143,.7)', color: '#fff', lw: 1.5}); if (f) b.text(String(f), a0 + (i + .5) * w, f, {dy: -9, size: 12}); });
+      b.path([[a0 - w / 2, 0], ...F.map((f, i) => [a0 + (i + .5) * w, f]), [a0 + (nc + .5) * w, 0]], {color: C.acc2, lw: 2});
+    }
+    if (vw.value === 'box' || vw.value === 'pontos'){ const pad = (hi - lo) * .08 + 1; b.view(lo - pad * 1.6, hi + pad, -1.2, 4);
+      chartAxes(b, {xticks: ticks(lo, hi, 8), yticks: [], fx: x => fmt(x, 1), x0: lo - pad * 1.3, y0: 0});
+      if (vw.value === 'box'){ boxplot(b, q, 1.6, {h: .6, labels: true}); const m = mean(V); b.poly([[m, .95], [m + (hi - lo) * .012, .8], [m, .65], [m - (hi - lo) * .012, .8]], {fill: C.blue, color: C.ink, lw: 1}); b.text(`média ${fmt(m, 1)}`, m, .35, {size: 12, bold: true, color: C.blue}); b.text('traço laranja: mediana', lo - pad * 1.2, 3.6, {align: 'left', size: 11, color: C.acc2}); }
+      else { const cnt = {}; V.forEach(x => { cnt[x] = (cnt[x] || 0) + 1; b.dot(x, .3 + (cnt[x] - 1) * .35, {fill: C.blue, r: 6, lw: 1}); }); const m = mean(V); b.line(m, 0, m, 3.4, {color: C.acc, lw: 2.5, dash: [6, 4]}); b.text(`média ${fmt(m, 1)}`, m, 3.65, {color: C.acc, bold: true, align: 'left', dx: 2}); b.line(q.md, 0, q.md, 3, {color: C.acc2, lw: 2.5}); b.text(`mediana ${fmt(q.md, 1)}`, q.md, 3.25, {color: C.acc2, bold: true, align: 'right', dx: -2}); }
+    }
+  };
+  ta.value = DATA.rdA.v.join('; '); upd();
+});
+
+tab('boxplot', 'Comparando box-plots',
+ 'Os box-plots de dois grupos, na mesma escala, mostram de uma só vez o centro e a dispersão de cada um. Turmas com medianas próximas podem ter dispersões muito diferentes. Valores a mais de 1,5 amplitude interquartil da caixa aparecem como pontos isolados (valores atípicos).',
+ (ctl, stg) => {
+  const sel = select(ctl, 'Comparação', [['ab', 'notas das turmas A e B'], ['rd', 'tempos de deslocamento de duas turmas']], () => b.draw());
+  const cd = check(ctl, 'Mostrar também os dados', true, () => b.draw());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.9, equal: false});
+  const rdB = [3, 5, 6, 7, 8, 8, 9, 10, 10, 10, 12, 12, 13, 14, 15, 15, 16, 17, 18, 18, 20, 20, 22, 24, 25, 26, 28, 30, 36, 38];
+  b.onDraw = () => {
+    const G = sel.value === 'ab' ? [['turma A', DATA.notasA.v], ['turma B', DATA.notasB.v]] : [['turma A', DATA.rdA.v], ['turma B', rdB]];
+    const all = G.flatMap(g => g[1]), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * .08;
+    b.view(lo - pad * 3, hi + pad, -1.3, 5.6); chartAxes(b, {xticks: ticks(lo, hi, 8), yticks: [], fx: x => fmt(x, 0), x0: lo - pad * 2, y0: 0, xlabel: sel.value === 'ab' ? 'nota' : 'minutos'});
+    const qs = G.map(([nm, v], i) => { const y = 4 - i * 2.4; b.text(nm, lo - pad * 2.2, y, {align: 'left', bold: true}); const q = quart(v); boxplot(b, q, y, {h: .45, color: i ? C.acc2 : C.acc}); if (cd.checked) v.forEach((x, k) => b.dot(x, y - .85 - (k % 2) * .12, {fill: C.muted, r: 3, lw: 0})); return [nm, q, v]; });
+    out.innerHTML = qs.map(([nm, q, v]) => `<b>${nm}</b>: mín. ${fmt(q.min, 1)}; Q1 ${fmt(q.q1, 2)}; Md ${fmt(q.md, 2)}; Q3 ${fmt(q.q3, 2)}; máx. ${fmt(q.max, 1)}<br>AIQ = ${fmt(q.q3 - q.q1, 2)}; média ${fmt(mean(v), 1)}`).join('<br>') + (sel.value === 'rd' ? '<div class="hint">Dados fictícios. A turma B tem mínimo 3, mediana 15, máximo 38, média 16,5 e desvio padrão amostral 9,0. Os quartis seguem a convenção das medianas das metades; as planilhas podem dar valores um pouco diferentes.</div>' : '');
+  };
+  b.draw();
+});
+
+tab('dispersao', 'Desvio padrão',
+ 'Três grupos de cinco estudantes têm média 7 e notas espalhadas de modos diferentes. Os segmentos mostram os desvios de cada nota em relação à média. No grupo "meu grupo", arraste as notas e veja a variância (média dos quadrados dos desvios) e o desvio padrão (raiz quadrada da variância).',
+ (ctl, stg) => {
+  const G = {X: [5, 6, 7, 8, 9], Y: [4, 4, 7, 10, 10], Z: [7, 7, 7, 7, 7], M: [3, 6, 7, 8, 10]};
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.55, equal: false});
+  b.view(-1.6, 10.8, -.8, 21.8);
+  const NM = ['X', 'Y', 'Z', 'M'], LB = {X: 'grupo X', Y: 'grupo Y', Z: 'grupo Z', M: 'meu grupo'};
+  for (let k = 0; k < 5; k++) b.handle(() => [G.M[k], 19 - 5.5 * 3 - 2.2 + k * .9], (x) => { G.M[k] = clamp(Math.round(x * 2) / 2, 0, 10); }, {r: 12});
+  b.onDraw = () => {
+    for (let t = 0; t <= 10; t++){ b.line(t, -.2, t, 21, {color: C.grid, lw: 1}); b.text(String(t), t, -.35, {size: 11, color: C.muted}); }
+    NM.forEach((g, i) => { const v = G[g], m = mean(v), y0 = 19 - 5.5 * i; b.text(LB[g], -1.5, y0 + 2.1, {align: 'left', bold: true, size: 12});
+      b.line(m, y0 - 2.6, m, y0 + 1.7, {color: C.acc, lw: 2, dash: [5, 4]});
+      v.forEach((x, k) => { const y = y0 - 2.2 + k * .9; b.line(m, y, x, y, {color: x >= m ? C.acc : C.acc2, lw: 3});
+        b.dot(x, y, {fill: i === 3 ? C.purple : C.blue, r: i === 3 ? 7 : 5, lw: 1}); });
+      const V = varp(v); b.text(`média ${fmt(m, 2)} · variância ${fmt(V, 2)} · desvio padrão ${fmt(Math.sqrt(V), 2)}`, 10.7, y0 + 2.1, {align: 'right', size: 12, color: C.muted}); });
+    const v = G.M, m = mean(v), V = varp(v);
+    out.innerHTML = `Meu grupo: ${v.map(x => fmt(x, 1)).join('; ')}<br>Média: <b>${fmt(m, 2)}</b><br>Desvios: ${v.map(x => fmt(x - m, 2)).join('; ')}<br>Variância: (${v.map(x => fmt((x - m) ** 2, 2)).join(' + ')}) / 5 = <b>${fmt(V, 2)}</b><br>Desvio padrão: √${fmt(V, 2)} ≈ <span class="big">${fmt(Math.sqrt(V), 2)}</span><div class="hint">Grupo Y: desvios -3, -3, 0, 3 e 3; variância 36/5 = 7,2; desvio padrão ≈ 2,68.</div>`;
+  };
+  b.draw();
+});
+
+tab('reta-ajuste', 'Reta de ajuste e resíduos',
+ 'Arraste as duas alças para posicionar uma reta "a olho" no diagrama de dispersão. Os segmentos verticais são os resíduos, e o objeto mostra a soma dos seus quadrados. A reta de mínimos quadrados é a que torna essa soma a menor possível; compare a sua reta com ela.',
+ (ctl, stg) => {
+  const SETS = {
+    estudo: {nome: 'horas de estudo e nota (8 estudantes, dados fictícios)', P: [[2, 53], [3, 54], [4, 57], [5, 64], [6, 73], [7, 72], [8, 81], [9, 86]], xl: 'horas semanais de estudo', yl: 'nota', v: [0, 10.5, 40, 95]},
+    dist: {nome: 'distância e tempo até a escola (10 estudantes, dados fictícios)', P: [[.8, 10], [1.5, 12], [2, 15], [2.5, 18], [3, 15], [4, 22], [5, 21], [6, 28], [7, 32], [8, 33]], xl: 'distância (km)', yl: 'tempo (min)', v: [0, 9, 0, 40]}};
+  const sel = select(ctl, 'Dados', Object.entries(SETS).map(([k, d]) => [k, d.nome]), () => { init(); b.draw(); });
+  const cr = check(ctl, 'Mostrar os resíduos', true, () => b.draw()), cq = check(ctl, 'Mostrar os quadrados dos resíduos', false, () => b.draw()), cl = check(ctl, 'Mostrar a reta de mínimos quadrados', false, () => b.draw());
+  button(btns(ctl), 'Colocar a minha reta na de mínimos quadrados', () => { const f = fitLS(S().P); A[1] = f.a * A[0] + f.b; B2[1] = f.a * B2[0] + f.b; b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, equal: false});
+  const S = () => SETS[sel.value]; let A, B2;
+  function init(){ const s = S(), [x0, x1, y0, y1] = s.v; b.view(x0 - (x1 - x0) * .1, x1, y0 - (y1 - y0) * .08, y1); A = [x0 + (x1 - x0) * .15, y0 + (y1 - y0) * .3]; B2 = [x0 + (x1 - x0) * .85, y0 + (y1 - y0) * .55]; }
+  b.handle(() => A, (x, y) => { A = [x, y]; }); b.handle(() => B2, (x, y) => { B2 = [x, y]; });
+  b.onDraw = () => {
+    const s = S(), [x0, x1, y0, y1] = s.v; chartAxes(b, {xticks: ticks(x0, x1, 8), yticks: ticks(y0, y1, 6), fx: x => fmt(x, 1), fy: y => fmt(y, 0), x0, y0, xlabel: s.xl, ylabel: s.yl});
+    const a = (B2[1] - A[1]) / (B2[0] - A[0] || 1e-9), c = A[1] - a * A[0]; const f = fitLS(s.P);
+    if (cl.checked) b.fn(x => f.a * x + f.b, {color: C.purple, lw: 2, dash: [7, 5]}, x0, x1);
+    b.fn(x => a * x + c, {color: C.acc, lw: 2.5}, x0, x1);
+    let ssr = 0; s.P.forEach(([x, y]) => { const r = y - (a * x + c); ssr += r * r; if (cq.checked){ const d = Math.abs(r), wpx = d * b.v.sy / b.v.sx; b.rect(x, Math.min(y, a * x + c), wpx, d, {fill: 'rgba(231,111,81,.12)', color: 'rgba(231,111,81,.6)', lw: 1}); } if (cr.checked) b.line(x, y, x, a * x + c, {color: C.acc2, lw: 2}); });
+    s.P.forEach(([x, y]) => b.dot(x, y, {fill: C.blue, r: 6}));
+    const ssl = s.P.reduce((t, [x, y]) => t + (y - f.a * x - f.b) ** 2, 0);
+    out.innerHTML = `Minha reta: y = ${fmt(a, 2)}x ${c < 0 ? '-' : '+'} ${fmt(Math.abs(c), 2)}<br>Soma dos quadrados dos resíduos: <span class="big">${fmt(ssr, 1)}</span><br>Mínimos quadrados: y = ${fmt(f.a, 2)}x ${f.b < 0 ? '-' : '+'} ${fmt(Math.abs(f.b), 2)}, soma ${fmt(ssl, 1)}<br>Coeficiente de correlação: r ≈ ${fmt(f.r, 3)}` + (ssr - ssl < .05 * ssl + .01 ? '<br><span class="ok">A sua reta está muito próxima da de mínimos quadrados.</span>' : '');
+  };
+  init(); b.draw();
+});
+
+tab('correlacao', 'Correlação',
+ 'O coeficiente de correlação linear r varia de -1 a 1 e mede a intensidade da associação linear entre duas variáveis. Escolha um valor de r para gerar uma nuvem de pontos e observe como ela muda; a opção "não linear" mostra uma associação forte que o r não detecta.',
+ (ctl, stg) => {
+  const sr = slider(ctl, {label: 'Correlação desejada', min: -1, max: 1, step: .05, value: .8, fmt: v => fmt(v, 2)}, () => gen());
+  const sn = slider(ctl, {label: 'Número de pontos', min: 10, max: 200, step: 10, value: 60}, () => gen());
+  const bb = btns(ctl); button(bb, 'Nova amostra', () => gen(), true); button(bb, 'Associação não linear', () => { nl = true; P = Array.from({length: sn.v}, () => { const x = Math.random() * 4 - 2; return [x, x * x - 1.3 + gauss() * .25]; }); b.draw(); });
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.3});
+  let P = [], nl = false;
+  function gen(){ nl = false; const r = sr.v; P = Array.from({length: sn.v}, () => { const x = gauss(), z = gauss(); return [x, r * x + Math.sqrt(Math.max(0, 1 - r * r)) * z]; }); b.draw(); }
+  b.view(-3.3, 3.3, -3.3, 3.3);
+  b.onDraw = () => { b.grid(1); b.axes({labels: false});
+    P.forEach(([x, y]) => b.dot(x, y, {fill: C.blue, r: 4, lw: 1}));
+    const f = fitLS(P); b.fn(x => f.a * x + f.b, {color: C.acc2, lw: 2}, -3.3, 3.3);
+    const r = f.r, txt = Math.abs(r) > .9 ? 'muito forte' : Math.abs(r) > .7 ? 'forte' : Math.abs(r) > .4 ? 'moderada' : Math.abs(r) > .2 ? 'fraca' : 'muito fraca ou inexistente';
+    out.innerHTML = `r calculado na amostra: <span class="big">${fmt(r, 3)}</span><br>Associação linear ${txt}${Math.abs(r) > .2 ? (r > 0 ? ', positiva' : ', negativa') : ''}<div class="hint">${nl ? 'Os pontos seguem uma parábola: a associação é forte, mas não é linear, e o r fica perto de zero. Sempre olhe o gráfico antes de interpretar o r.' : 'Mesmo com a mesma correlação desejada, cada amostra dá um r um pouco diferente, principalmente com poucos pontos. Correlação não é causalidade.'}</div>`; };
+  gen();
+});
+
+tab('amostragem', 'Métodos de amostragem',
+ 'Uma escola fictícia tem 200 estudantes em 8 turmas (linhas) de três séries (cores). Sorteie uma amostra por quatro métodos e compare: aleatória simples, sistemática, estratificada (proporcional às séries) e por conglomerados (duas turmas inteiras sorteadas, 50 estudantes); nos outros métodos, a amostra tem 20 estudantes. O objeto compara a proporção de estudantes que usam ônibus na amostra e na escola.',
+ (ctl, stg) => {
+  const met = select(ctl, 'Método', [['simples', 'aleatória simples'], ['sist', 'sistemática (1 a cada 10)'], ['estrat', 'estratificada por série'], ['cong', 'por conglomerados (2 turmas)']], () => sortear());
+  button(btns(ctl), 'Sortear outra amostra', () => sortear(), true);
+  button(btns(ctl), 'Repetir 200 vezes e comparar', () => rep());
+  const out = output(ctl);
+  const b = stageBoard(stg, {aspect: 1.5, maxh: 640});
+  const R = 25, Cc = 8, N = R * Cc; let seed = 7; const prng = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const serie = i => (i % Cc) < 3 ? 0 : (i % Cc) < 6 ? 1 : 2; // turmas 1-3: 1ª série; 4-6: 2ª; 7-8: 3ª
+  const onibus = Array.from({length: N}, (_, i) => prng() < [.12, .45, .75][serie(i)] + ((i % Cc) === 7 ? .15 : 0));
+  const pPop = onibus.filter(Boolean).length / N; let S = [], hist = null;
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--){ const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function draw20(m){ const idx = Array.from({length: N}, (_, i) => i); // ordem: lista de chamada percorre turma por turma
+    const order = []; for (let c = 0; c < Cc; c++) for (let r = 0; r < R; r++) order.push(r * Cc + c);
+    if (m === 'simples') return shuffle(idx).slice(0, 20);
+    if (m === 'sist'){ const k = rnd(10); return order.filter((_, j) => j % 10 === k); }
+    if (m === 'estrat'){ const out = []; [0, 1, 2].forEach(s => { const g = idx.filter(i => serie(i) === s); const n = Math.round(20 * g.length / N); out.push(...shuffle(g).slice(0, n)); }); return out.slice(0, 20); }
+    if (m === 'cong'){ const t = shuffle([0, 1, 2, 3, 4, 5, 6, 7]).slice(0, 2); return idx.filter(i => t.includes(i % Cc)); }
+  }
+  function sortear(){ S = draw20(met.value); hist = null; b.draw(); }
+  function rep(){ hist = {}; ['simples', 'sist', 'estrat', 'cong'].forEach(m => { hist[m] = Array.from({length: 200}, () => { const s = draw20(m); return s.filter(i => onibus[i]).length / s.length; }); }); b.draw(); }
+  const SC = [C.acc, C.blue, C.purple];
+  b.onDraw = () => {
+    b.view(-2.6, 26, hist ? -19 : -3.2, 9.2);
+    for (let c = 0; c < Cc; c++) b.text(`T${c + 1}`, -1.2, 8 - c - .5, {size: 11, color: C.muted});
+    for (let i = 0; i < N; i++){ const t = i % Cc, k = Math.floor(i / Cc), on = S.includes(i), x = k + .5, y = 8 - t - .5; b.circle(x, y, .36, {fill: on ? SC[serie(i)] : SC[serie(i)] + '33', color: on ? C.ink : 'transparent', lw: on ? 1.5 : 0}); if (onibus[i] && on) b.text('ô', x, y, {size: 10, bold: true, color: '#fff'}); }
+    ['1ª série (T1 a T3)', '2ª série (T4 a T6)', '3ª série (T7 e T8)'].forEach((t, s) => { b.circle(.4 + s * 7.4, -1, .36, {fill: SC[s], stroke: null}); b.text(t, 1 + s * 7.4, -1, {align: 'left', size: 12}); });
+    b.text('ô = usa ônibus (só nos sorteados)', .1, -2.2, {align: 'left', size: 12, color: C.muted});
+    if (hist){ const Lb = {simples: 'aleatória simples', sist: 'sistemática', estrat: 'estratificada', cong: 'conglomerados'}; Object.entries(hist).forEach(([m, v], k) => { const y = -5.5 - k * 3.2; b.text(Lb[m], 4.6, y + .6, {align: 'right', size: 12, bold: true}); b.line(5, y, 25, y, {color: C.line, lw: 1});
+        v.forEach((p, j) => b.dot(5 + 20 * p, y + .25 + (j % 8) * .22, {fill: C.blue, r: 2, lw: 0})); b.line(5 + 20 * pPop, y - .3, 5 + 20 * pPop, y + 2.2, {color: C.acc2, lw: 2}); });
+      [0, 25, 50, 75, 100].forEach(t => b.text(t + '%', 5 + t / 5, -5.5 - 3 * 3.2 - .8, {size: 10, color: C.muted})); }
+  };
+  const _d = b.draw.bind(b); b.draw = () => { _d(); const ps = S.length ? S.filter(i => onibus[i]).length / S.length : 0;
+    const sd = hist ? Object.fromEntries(Object.entries(hist).map(([m, v]) => [m, Math.sqrt(varp(v))])) : null;
+    out.innerHTML = `Amostra: <b>${S.length}</b> estudantes<br>Usam ônibus na amostra: <b>${fmt(100 * ps, 1)}%</b><br>Usam ônibus na escola: <b>${fmt(100 * pPop, 1)}%</b>` + (sd ? `<br>Desvio padrão das 200 estimativas:<br>simples ${fmt(100 * sd.simples, 1)}; sistemática ${fmt(100 * sd.sist, 1)}; estratificada ${fmt(100 * sd.estrat, 1)}; conglomerados ${fmt(100 * sd.cong, 1)} (pontos percentuais)<div class="hint">Cada ponto é a estimativa de uma amostra; a linha laranja é a proporção na escola. Como o uso de ônibus muda muito de uma série para outra, a amostra estratificada varia menos, e os conglomerados, formados por turmas inteiras parecidas entre si, variam mais.</div>` : '<div class="hint">Na amostragem por conglomerados, todos os estudantes das turmas sorteadas entram na amostra.</div>'); };
+  sortear();
+});
+
+tab('margem-erro', 'Tamanho da amostra e margem de erro',
+ 'Para uma proporção estimada por amostra aleatória simples de tamanho n, com 95% de confiança, uma aproximação conservadora da margem de erro é 100/√n pontos percentuais. Mude n e simule 20 pesquisas: cada barra é um intervalo "estimativa ± margem", e cerca de 95% deles contêm a proporção verdadeira.',
+ (ctl, stg) => {
+  const sn = slider(ctl, {label: 'Tamanho da amostra (n)', min: 50, max: 3000, step: 50, value: 400}, () => { sim(); });
+  const sp = slider(ctl, {label: 'Proporção verdadeira na população', min: 10, max: 90, value: 52, unit: '%'}, () => sim());
+  button(btns(ctl), 'Simular 20 pesquisas', () => sim(), true);
+  const out = output(ctl);
+  const grid = h('div', {style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px'}); stg.append(grid); const w1 = h('div'), w2 = h('div'); grid.append(w1, w2);
+  const b1 = new Board(w1, {aspect: 1.05, equal: false}), b2 = new Board(w2, {aspect: 1.05, equal: false});
+  let est = [];
+  function sim(){ const n = sn.v, p = sp.v / 100; est = Array.from({length: 20}, () => { let s = 0; for (let i = 0; i < n; i++) if (Math.random() < p) s++; return s / n; }); b1.draw(); b2.draw(); report(); }
+  b1.onDraw = () => { b1.view(-560, 3100, -1.2, 16.5); chartAxes(b1, {xticks: [0, 1000, 2000, 3000], yticks: [0, 5, 10, 15], fx: x => fmt(x, 0), fy: y => y + ' p.p.', x0: 0, y0: 0, xlabel: 'n', ylabel: 'margem de erro'});
+    b1.fn(n => 100 / Math.sqrt(n), {color: C.acc, lw: 2.5}, 45, 3000); const n = sn.v; b1.dot(n, 100 / Math.sqrt(n), {fill: C.acc2, r: 6});
+    [[100, 10], [400, 5], [1600, 2.5]].forEach(([x, y]) => { b1.dot(x, y, {fill: C.ink, r: 3, lw: 0}); b1.text(`${x}: ${fmt(y, 1)}`, x, y, {dx: 8, dy: -8, align: 'left', size: 11, color: C.muted}); }); };
+  b2.onDraw = () => { const p = sp.v, e = 100 / Math.sqrt(sn.v); b2.view(p - 25, p + 25, -1.5, 21); chartAxes(b2, {xticks: ticks(p - 20, p + 20, 5), yticks: [], fx: x => fmt(x, 0) + '%', x0: p - 25, y0: 0});
+    b2.line(p, 0, p, 20.5, {color: C.acc2, lw: 2}); est.forEach((q, i) => { const c = Math.abs(100 * q - p) <= e; b2.line(100 * q - e, i + .7, 100 * q + e, i + .7, {color: c ? C.acc : C.acc2, lw: 3}); b2.dot(100 * q, i + .7, {fill: c ? C.acc : C.acc2, r: 3.5, lw: 0}); }); };
+  function report(){ const e = 100 / Math.sqrt(sn.v), ok = est.filter(q => Math.abs(100 * q - sp.v) <= e).length;
+    out.innerHTML = `n = ${sn.v}: margem ≈ 100/√${sn.v} ≈ <span class="big">${fmt(e, 1)} p.p.</span><br>Intervalos que contêm a proporção verdadeira: <b>${ok} de 20</b><div class="hint">Para reduzir a margem à metade, é preciso quadruplicar a amostra. A margem de erro não protege contra vieses de seleção ou perguntas mal formuladas.</div>`; }
+  sim();
+});
+
+boot();
+</script>
+</body>
+</html>
