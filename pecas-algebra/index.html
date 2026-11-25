@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F8FB">
+<title>Peças de álgebra: fatoração por áreas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --quadro: #F5F8FB;
+    --papel: #FFFFFF;
+    --tinta: #1B2430;
+    --tinta-suave: #5A6573;
+    --linha: #D5DDE6;
+    --ponto: #C9D3DE;
+    --azul: #1F4E8C;
+    --azul-fundo: #DCE8F7;
+    --azul-fundo-sel: #C3D8F2;
+    --vermelho: #B3261E;
+    --vermelho-fundo: #F6D5D1;
+    --verde: #1E7A4A;
+    --verde-fundo: #DDF1E5;
+    --foco: #F2B705;
+    --mao: "Kalam", "Comic Sans MS", "Segoe Print", cursive;
+    --texto: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --quadro: #151B22; --papel: #1D252E; --tinta: #E6EDF4; --tinta-suave: #9AA7B5;
+      --linha: #33404D; --ponto: #2C3845;
+      --azul: #8DB8F0; --azul-fundo: #1F3654; --azul-fundo-sel: #2A4A72;
+      --vermelho: #F08A80; --vermelho-fundo: #4A2220;
+      --verde: #7BD6A2; --verde-fundo: #183826;
+    }
+  }
+  :root[data-theme="dark"] {
+    --quadro: #151B22; --papel: #1D252E; --tinta: #E6EDF4; --tinta-suave: #9AA7B5;
+    --linha: #33404D; --ponto: #2C3845;
+    --azul: #8DB8F0; --azul-fundo: #1F3654; --azul-fundo-sel: #2A4A72;
+    --vermelho: #F08A80; --vermelho-fundo: #4A2220;
+    --verde: #7BD6A2; --verde-fundo: #183826;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--quadro); color: var(--tinta);
+    font-family: var(--texto); font-size: 1rem; line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+    padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 2.5rem; }
+
+  header h1 {
+    font-family: var(--mao); font-weight: 700; color: var(--azul);
+    font-size: clamp(1.9rem, 5vw, 2.9rem); line-height: 1.1; margin: 0 0 .25rem;
+  }
+  header p { margin: 0 0 1.1rem; color: var(--tinta-suave); max-width: 64ch; }
+
+  .entrada { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+  .entrada label { flex-basis: 100%; font-weight: 700; font-size: .95rem; }
+  #campo {
+    flex: 1 1 220px; min-width: 0; font-family: var(--mao); font-size: 1.6rem;
+    padding: .35rem .8rem; border: 2px solid var(--linha); border-radius: 10px;
+    background: var(--papel); color: var(--tinta);
+  }
+  #campo:focus-visible { outline: 3px solid var(--foco); outline-offset: 1px; border-color: var(--azul); }
+  button {
+    font-family: var(--texto); font-size: 1rem; font-weight: 700; cursor: pointer;
+    border-radius: 10px; padding: .6rem 1rem; border: 2px solid var(--azul);
+    background: var(--papel); color: var(--azul); touch-action: manipulation;
+  }
+  button.primario { background: var(--azul); color: var(--papel); }
+  button:hover { background: var(--azul-fundo); }
+  button.primario:hover { filter: brightness(1.1); background: var(--azul); }
+  button:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.par { border-style: dashed; }
+  .rot-curto { display: none; }
+
+  /* atalhos de digitação: só em telas de toque */
+  .teclado { display: none; gap: .4rem; margin-top: .5rem; flex-wrap: wrap; }
+  .teclado button {
+    font-family: var(--mao); font-size: 1.35rem; font-weight: 700; min-width: 3rem;
+    padding: .2rem .7rem; border-width: 1.5px;
+  }
+  .teclado button.acao { font-family: var(--texto); font-size: .95rem; }
+
+  .exemplos { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0 0; align-items: center; }
+  .exemplos span { color: var(--tinta-suave); font-size: .9rem; margin-right: .25rem; }
+  .exemplos button {
+    font-family: var(--mao); font-weight: 400; font-size: 1.05rem; padding: .15rem .65rem;
+    border: 1.5px dashed var(--linha); color: var(--tinta); border-radius: 999px;
+  }
+  .exemplos button:hover { border-color: var(--azul); background: var(--papel); }
+  .exemplos button.com-negativo { color: var(--vermelho); }
+
+  #erro { color: var(--vermelho); font-weight: 700; margin: .5rem 0 0; min-height: 1.5em; }
+
+  #areaTrabalho { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 6px); }
+  .barra {
+    display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: center; justify-content: space-between;
+    margin: .25rem 0 .4rem;
+  }
+  .barra .acoes { display: flex; flex-wrap: wrap; gap: .5rem; }
+  #inventario { font-family: var(--mao); font-size: 1.2rem; color: var(--tinta-suave); }
+  #inventario .neg { color: var(--vermelho); }
+  #inventario .pos { color: var(--azul); }
+  #status { margin: 0 0 .5rem; color: var(--tinta-suave); min-height: 1.5em; }
+  #status strong { color: var(--tinta); }
+
+  .quadro-wrap {
+    background: var(--papel); border: 2px solid var(--linha); border-radius: 14px;
+    overflow: hidden; position: relative;
+  }
+  #quadro {
+    display: block; width: 100%; height: 640px; touch-action: none;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  #quadro .fundo-pontos circle { fill: var(--ponto); }
+  #quadro .rotulo-area { font-family: var(--mao); fill: var(--tinta-suave); opacity: .7; }
+  #quadro .divisoria { stroke: var(--linha); stroke-width: 2; stroke-dasharray: 8 8; }
+  #quadro .hachura-fundo { fill: var(--vermelho-fundo); }
+  #quadro .hachura-linha { stroke: var(--vermelho); stroke-width: 2; opacity: .35; }
+
+  .peca { cursor: grab; }
+  .peca.arrastando { cursor: grabbing; }
+  .peca .alvo { fill: transparent; stroke: none; }
+  .peca .corpo { stroke-width: 3.2; stroke-linejoin: round; }
+  .peca.pos .corpo { fill: var(--azul-fundo); stroke: var(--azul); }
+  .peca.neg .corpo { fill: url(#hachura); stroke: var(--vermelho); }
+  .peca.neg { opacity: .8; }
+  .peca.pos.sel .corpo { fill: var(--azul-fundo-sel); }
+  .peca.sel .corpo { stroke-width: 4.5; }
+  .peca.neg.sel { opacity: .92; }
+  .peca text { font-family: var(--mao); font-weight: 700; pointer-events: none; }
+  .peca.pos text { fill: var(--azul); }
+  .peca.neg text { fill: var(--vermelho); }
+
+  .alca-girar { cursor: pointer; }
+  .alca-girar circle { fill: var(--azul); stroke: var(--papel); stroke-width: 3; }
+  .alca-girar text { fill: var(--papel); font-family: var(--texto); font-weight: 700; pointer-events: none; }
+
+  .anot { pointer-events: none; }
+  .anot rect.area-final { fill: var(--verde); opacity: .16; }
+  .anot rect.contorno { fill: none; stroke: var(--verde); stroke-width: 3; stroke-dasharray: 10 6; }
+  .anot line { stroke: var(--verde); stroke-width: 2.5; }
+  .anot text { font-family: var(--mao); font-weight: 700; fill: var(--verde); paint-order: stroke; stroke: var(--papel); stroke-width: 5px; }
+
+  /* resultado: cartão sobre a parte de baixo do quadro */
+  #resultado {
+    position: absolute; left: .6rem; right: .6rem; bottom: .6rem; max-height: 60%; overflow: auto;
+    border: 2px solid var(--verde); background: var(--verde-fundo);
+    border-radius: 12px; padding: .7rem 2.8rem .7rem 1rem;
+    box-shadow: 0 6px 18px rgba(20, 60, 40, .18);
+  }
+  #resultado[hidden] { display: none; }
+  #resultado p { margin: 0; }
+  #resultado .equacao {
+    font-family: var(--mao); font-weight: 700; color: var(--verde);
+    font-size: clamp(1.45rem, 4.5vw, 2.4rem); line-height: 1.25; margin: .1rem 0;
+    overflow-wrap: anywhere;
+  }
+  #resultado .obs { color: var(--tinta); }
+  #resultado .obs + .obs:not(:empty) { margin-top: .35rem; }
+  #btnFecharResultado {
+    position: absolute; top: .35rem; right: .35rem; width: 2.5rem; height: 2.5rem; padding: 0;
+    border: none; background: transparent; color: var(--verde); font-size: 1.6rem; line-height: 1;
+  }
+  #btnFecharResultado:hover { background: rgba(30, 122, 74, .12); }
+
+  details.ajuda { margin-top: 1.4rem; color: var(--tinta-suave); max-width: 72ch; }
+  details.ajuda summary { cursor: pointer; font-weight: 700; color: var(--tinta); padding: .4rem 0; }
+  details.ajuda ul { padding-left: 1.2rem; }
+
+  /* ---------- celulares e tablets ---------- */
+  @media (pointer: coarse) {
+    .teclado { display: flex; }
+    button { min-height: 44px; }
+    .exemplos button { min-height: 38px; }
+  }
+  @media (max-width: 820px) {
+    main { padding: .8rem .6rem 2rem; }
+    header p { font-size: .95rem; margin-bottom: .8rem; }
+    #campo { font-size: 1.45rem; }
+    .exemplos {
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      margin-left: -.6rem; margin-right: -.6rem; padding: 0 .6rem 4px;
+    }
+    .exemplos::-webkit-scrollbar { display: none; }
+    .exemplos > * { flex: 0 0 auto; }
+    .rot-longo { display: none; }
+    .rot-curto { display: inline; }
+    .barra { flex-direction: column; align-items: stretch; gap: .4rem; }
+    #inventario { font-size: 1.05rem; line-height: 1.3; }
+    .barra .acoes { display: grid; grid-template-columns: repeat(6, 1fr); gap: .4rem; }
+    .barra .acoes button { grid-column: span 2; padding: .5rem .3rem; font-size: .95rem; }
+    .barra .acoes #btnSolucao, .barra .acoes #btnReiniciar { grid-column: span 3; }
+    #status { font-size: .92rem; line-height: 1.35; min-height: 2.7em; margin-bottom: .35rem; }
+    .quadro-wrap { border-radius: 10px; }
+    #resultado { padding: .5rem 2.6rem .55rem .8rem; }
+    #resultado .obs:first-of-type { display: none; }
+    #resultado .obs { font-size: .9rem; line-height: 1.35; }
+  }
+  /* celular deitado: botões numa coluna ao lado do quadro */
+  @media (orientation: landscape) and (max-height: 520px) {
+    header p { display: none; }
+    header h1 { font-size: 1.7rem; }
+    #areaTrabalho {
+      display: grid; grid-template-columns: minmax(130px, 170px) 1fr;
+      grid-template-areas: "barra status" "barra quadro"; gap: 0 .6rem; align-items: start;
+    }
+    .barra { grid-area: barra; flex-direction: column; align-items: stretch; margin: 0; gap: .35rem; }
+    .barra .acoes { display: flex; flex-direction: column; gap: .3rem; }
+    .barra .acoes button, .barra .acoes #btnSolucao, .barra .acoes #btnReiniciar { min-height: 38px; padding: .25rem .4rem; font-size: .9rem; }
+    #inventario { font-size: .95rem; }
+    #status {
+      grid-area: status; min-height: 0; margin: 0 0 .3rem; font-size: .88rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .quadro-wrap { grid-area: quadro; }
+    #resultado { max-height: 75%; padding: .45rem 2.6rem .45rem .8rem; }
+    #resultado .obs:first-of-type { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Peças de álgebra</h1>
+    <p>Digite um trinômio do 2º grau, arraste as peças e monte um único retângulo. As peças azuis são áreas positivas; as vermelhas, áreas negativas, que cancelam o azul que estiver embaixo delas. Os lados do retângulo são os fatores do polinômio.</p>
+  </header>
+
+  <form class="entrada" id="formulario" autocomplete="off" onsubmit="return false;">
+    <label for="campo">Polinômio</label>
+    <input id="campo" type="text" inputmode="text" enterkeyhint="go" autocapitalize="off" autocorrect="off" spellcheck="false" value="x^2 - 2x + 1" aria-describedby="erro">
+    <button class="primario" id="btnGerar" type="submit">Gerar peças</button>
+  </form>
+  <div class="teclado" id="teclado" aria-label="Atalhos de digitação">
+    <button type="button" data-ins="x²">x²</button>
+    <button type="button" data-ins="x">x</button>
+    <button type="button" data-ins=" + ">+</button>
+    <button type="button" data-ins=" − ">−</button>
+    <button type="button" class="acao" data-acao="apagar" aria-label="Apagar">⌫</button>
+    <button type="button" class="acao" data-acao="limpar">Limpar</button>
+  </div>
+  <div class="exemplos" id="exemplos">
+    <span>Exemplos:</span>
+  </div>
+  <p id="erro" role="alert"></p>
+
+  <section id="areaTrabalho" aria-label="Área de trabalho">
+    <div class="barra" id="barra">
+      <div id="inventario" aria-live="polite"></div>
+      <div class="acoes">
+        <button id="btnGirar" type="button" disabled><span class="rot-longo">Girar peça</span><span class="rot-curto">↻ Girar</span></button>
+        <button id="btnParMais" class="par" type="button" title="Um x azul e um x vermelho: juntos valem zero"><span class="rot-longo">Adicionar par nulo</span><span class="rot-curto">+ Par nulo</span></button>
+        <button id="btnParMenos" class="par" type="button" disabled><span class="rot-longo">Remover par nulo</span><span class="rot-curto">− Par nulo</span></button>
+        <button id="btnSolucao" type="button"><span class="rot-longo">Mostrar solução</span><span class="rot-curto">Solução</span></button>
+        <button id="btnReiniciar" type="button"><span class="rot-longo">Reiniciar peças</span><span class="rot-curto">Reiniciar</span></button>
+      </div>
+    </div>
+
+    <p id="status" aria-live="polite"></p>
+
+    <div class="quadro-wrap" id="quadroWrap">
+      <svg id="quadro" viewBox="0 0 1000 640" role="application" aria-label="Quadro com as peças de álgebra">
+        <defs>
+          <pattern id="pontos" width="24" height="24" patternUnits="userSpaceOnUse" class="fundo-pontos">
+            <circle cx="12" cy="12" r="1.3"></circle>
+          </pattern>
+          <pattern id="hachura" width="11" height="11" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect class="hachura-fundo" x="0" y="0" width="11" height="11"></rect>
+            <line class="hachura-linha" x1="0" y1="0" x2="0" y2="11"></line>
+          </pattern>
+        </defs>
+        <rect id="fundoPontos" x="0" y="0" width="1000" height="640" fill="url(#pontos)"></rect>
+        <g id="camadaFundo"></g>
+        <g id="camadaAzul"></g>
+        <g id="camadaVermelha"></g>
+        <g id="camadaAnot" class="anot"></g>
+        <g id="camadaControle"></g>
+      </svg>
+
+      <section id="resultado" hidden aria-live="polite">
+        <button id="btnFecharResultado" type="button" aria-label="Fechar resultado">×</button>
+        <p class="obs" id="resultadoTexto"></p>
+        <p class="equacao" id="resultadoEquacao"></p>
+        <p class="obs" id="resultadoExtra"></p>
+      </section>
+    </div>
+  </section>
+
+  <details class="ajuda">
+    <summary>Como usar</summary>
+    <ul>
+      <li>Arraste as peças com o mouse ou com o dedo. Elas se encaixam sozinhas quando uma borda chega perto de outra.</li>
+      <li>Para girar um retângulo x por 1: toque no botão redondo ↻ que aparece ao lado da peça escolhida, toque duas vezes na peça ou use o botão “Girar”. No computador, também funcionam o botão direito e a tecla R.</li>
+      <li>Peças vermelhas valem área negativa. Colocada sobre uma área azul, a peça vermelha a cancela. As vermelhas ficam sempre por cima das azuis.</li>
+      <li>Se duas peças vermelhas se cruzam, aquele pedaço foi retirado duas vezes: é preciso devolver uma área azul ali (por exemplo, um quadradinho 1).</li>
+      <li>Um par nulo é um x azul com um x vermelho: juntos valem zero, então podem ser adicionados sem mudar o polinômio. Em casos como x² − 1 eles são indispensáveis. Um par que não for usado deve ficar empilhado (um sobre o outro) ou ser removido.</li>
+      <li>O retângulo está certo quando o que sobra de azul, descontado o vermelho, é um único retângulo, sem buracos, sem sobreposição e sem vermelho sobrando.</li>
+      <li>O tamanho de x muda conforme o polinômio e o tamanho da tela, para que a montagem seja sempre possível e caiba no quadro. Se você girar o celular ou o tablet, as peças continuam onde estavam.</li>
+    </ul>
+  </details>
+</main>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   CONFIGURAÇÃO
+   ===================================================================== */
+const CONFIG = {
+  MARGEM_PX: 18,
+  IMA_PX: 12,           // distância (px) para as bordas "grudarem" com mouse
+  IMA_TOQUE_PX: 18,     // … e com o dedo
+  ALVO_TOQUE_PX: 44,    // área mínima de toque de uma peça
+  LIMITES: { a: 6, b: 30, c: 60, pecas: 120, pares: 12 },
+  EXEMPLOS: ["x^2 + 2x + 1", "x^2 + 5x + 6", "2x^2 + 3x + 1", "x^2 - 2x + 1", "x^2 - 5x + 6", "x^2 - 3x", "x^2 + x - 6", "x^2 - 1", "2x^2 - x - 1", "x^2 + x + 1"]
+};
+
+/* ==== NUCLEO (funções puras, sem DOM) ==== */
+
+// Lê textos como "x^2 - 2x + 1", "x² − 2x + 1", "2*x^2+3x-1".
+// Devolve {a, b, c} de a·x² + b·x + c.
+function lerPolinomio(texto) {
+  let s = String(texto).toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/²/g, "^2").replace(/¹/g, "")
+    .replace(/[−–—]/g, "-")
+    .replace(/\*/g, "")
+    .replace(/=0$/, "");
+  if (!s) throw new Error("Digite um polinômio, por exemplo x^2 + 2x + 1.");
+  const termos = s.match(/[+-]?[^+-]+/g);
+  if (!termos || termos.join("") !== s) throw new Error("Não entendi a expressão. Escreva algo como x^2 - 2x + 1.");
+  const coef = [0, 0, 0];
+  for (const t of termos) {
+    const m = t.match(/^([+-]?)(\d*)(x(?:\^(\d+))?)?$/);
+    if (!m || (m[2] === "" && !m[3])) {
+      if (/[.,]/.test(t)) throw new Error("Use apenas coeficientes inteiros.");
+      throw new Error(`Não entendi o termo “${t}”.`);
+    }
+    const sinal = m[1] === "-" ? -1 : 1;
+    const valor = m[2] === "" ? 1 : parseInt(m[2], 10);
+    const grau = m[3] ? (m[4] ? parseInt(m[4], 10) : 1) : 0;
+    if (grau > 2) throw new Error("Use um polinômio de grau 2, no máximo com x².");
+    coef[grau] += sinal * valor;
+  }
+  return { a: coef[2], b: coef[1], c: coef[0] };
+}
+
+// Quantas peças de cada tipo a montagem de (p·x + q)(r·x + s) usa.
+//  - bloco de p × r quadrados x²;
+//  - q > 0: q colunas de largura 1 acrescentadas à direita (x azuis em pé);
+//    q < 0: |q| colunas de largura 1 retiradas da direita (x vermelhos em pé por cima);
+//  - s > 0 / s < 0: o mesmo com linhas embaixo (x deitados);
+//  - canto das colunas × linhas: q·s quadradinhos (azuis se q·s > 0, vermelhos se q·s < 0).
+function contagemSolucao(f) {
+  const pos = (n) => Math.max(n, 0), neg = (n) => Math.max(-n, 0);
+  return {
+    x2: f.p * f.r,
+    xAzul: f.p * pos(f.s) + pos(f.q) * f.r,
+    xVermelho: f.p * neg(f.s) + neg(f.q) * f.r,
+    unidades: Math.abs(f.q * f.s),
+    sinalUnidade: f.q * f.s >= 0 ? 1 : -1
+  };
+}
+
+// Pares nulos (+x e −x) que a montagem exige além das peças do polinômio.
+function paresNecessarios(b, f) {
+  return contagemSolucao(f).xAzul - Math.max(b, 0);
+}
+
+// Procura (p·x + q)(r·x + s) = a·x² + b·x + c com inteiros, p ≥ r ≥ 1.
+// Entre as opções, prefere a que precisa de menos pares nulos.
+function fatorar(a, b, c) {
+  const LIM = 80;
+  let melhor = null, melhorPares = Infinity;
+  for (let p = a; p >= 1; p--) {
+    if (a % p !== 0) continue;
+    const r = a / p;
+    if (r > p) continue;
+    for (let q = -LIM; q <= LIM; q++) {
+      for (let s = -LIM; s <= LIM; s++) {
+        if (q * s === c && p * s + q * r === b) {
+          const f = { p, q, r, s }, n = paresNecessarios(b, f);
+          if (n < melhorPares) { melhor = f; melhorPares = n; }
+        }
+      }
+    }
+  }
+  return melhor;
+}
+
+// Razão x : 1 usada no desenho. É "irracional" (… + √2) para que nenhuma
+// soma de peças de lado 1 imite um x — assim só o retângulo certo fecha.
+// Também é maior que os termos constantes dos fatores, então x − q > 0 sempre.
+function escolherRazao(fat) {
+  const M = fat ? Math.max(Math.abs(fat.q), Math.abs(fat.s)) : 0;
+  return Math.max(2, M) + Math.SQRT2;
+}
+
+// Uma peça. sinal: +1 (azul) ou −1 (vermelho).
+function novaPeca(id, tipo, sinal, razao) {
+  const w = tipo === "x2" ? razao : 1;
+  const h = tipo === "1" ? 1 : razao;
+  return { id, tipo, sinal, w, h, x: 0, y: 0, par: false };
+}
+
+function criarPecas(a, b, c, razao) {
+  const pecas = [];
+  const add = (tipo, qtd) => {
+    const sinal = qtd < 0 ? -1 : 1;
+    for (let i = 0; i < Math.abs(qtd); i++) pecas.push(novaPeca(pecas.length, tipo, sinal, razao));
+  };
+  add("x2", a); add("x", b); add("1", c);
+  return pecas;
+}
+
+// Verifica se as peças formam um único retângulo.
+// Calcula a "cobertura líquida" de cada célula da grade formada pelas
+// bordas das peças (azul +1, vermelho −1). Válido ⇔ toda célula tem
+// cobertura 0 ou 1 e as células com 1 formam exatamente um retângulo cheio.
+function analisarPecas(pecas) {
+  const EPS = 1e-6;
+  if (!pecas.length) return { ok: false, motivo: "vazio" };
+  const unicos = (vals) => {
+    vals.sort((u, v) => u - v);
+    const out = [];
+    for (const v of vals) if (!out.length || v - out[out.length - 1] > EPS) out.push(v);
+    return out;
+  };
+  const xs = unicos(pecas.flatMap(p => [p.x, p.x + p.w]));
+  const ys = unicos(pecas.flatMap(p => [p.y, p.y + p.h]));
+  const nx = xs.length - 1, ny = ys.length - 1;
+  const cob = Array.from({ length: ny }, () => new Array(nx).fill(0));
+  for (let j = 0; j < ny; j++) {
+    const cy = (ys[j] + ys[j + 1]) / 2;
+    for (let i = 0; i < nx; i++) {
+      const cx = (xs[i] + xs[i + 1]) / 2;
+      let soma = 0;
+      for (const p of pecas) {
+        if (cx > p.x && cx < p.x + p.w && cy > p.y && cy < p.y + p.h) soma += p.sinal;
+      }
+      cob[j][i] = soma;
+    }
+  }
+  let i0 = Infinity, i1 = -1, j0 = Infinity, j1 = -1, sobre = false, negativo = false;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const v = cob[j][i];
+    if (v > 1) sobre = true;
+    if (v < 0) negativo = true;
+    if (v === 1) { i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
+  }
+  if (negativo) return { ok: false, motivo: "negativo" };
+  if (sobre) return { ok: false, motivo: "sobreposicao" };
+  if (i1 < 0) return { ok: false, motivo: "vazio" };
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    if (cob[j][i] !== 1) return { ok: false, motivo: "lacuna" };
+  }
+  return { ok: true, x: xs[i0], y: ys[j0], W: xs[i1 + 1] - xs[i0], H: ys[j1 + 1] - ys[j0] };
+}
+
+// Escreve um comprimento L como p·x + q (p, q inteiros).
+function identificarLado(L, razao) {
+  for (let p = 0; p <= 12; p++) {
+    const q = Math.round(L - p * razao);
+    if (Math.abs(L - p * razao - q) < 1e-4) return { p, q };
+  }
+  return null;
+}
+
+function mdc(m, n) { m = Math.abs(m); n = Math.abs(n); while (n) [m, n] = [n, m % n]; return m; }
+
+function formatarLinear(p, q) {
+  let s = p === 0 ? "" : (p === 1 ? "x" : p + "x");
+  if (q !== 0) s += s ? (q > 0 ? " + " + q : " − " + (-q)) : String(q).replace("-", "−");
+  return s || "0";
+}
+const ehMonomio = (d) => d.p === 0 || d.q === 0;
+const comParenteses = (d) => ehMonomio(d) ? formatarLinear(d.p, d.q) : "(" + formatarLinear(d.p, d.q) + ")";
+
+function formatarProduto(d1, d2) {
+  if (d1.p === d2.p && d1.q === d2.q) {
+    return ehMonomio(d1) && d1.p === 1 ? "x²" : comParenteses(d1) + "²";
+  }
+  // monômio primeiro: x(x − 3) em vez de (x − 3)x
+  const [u, v] = ehMonomio(d2) && !ehMonomio(d1) ? [d2, d1] : [d1, d2];
+  return comParenteses(u) + comParenteses(v);
+}
+
+function formatarPolinomio(a, b, c) {
+  const partes = [];
+  const termo = (k, corpo) => {
+    if (k === 0) return;
+    const abs = Math.abs(k);
+    const txt = corpo ? (abs === 1 ? corpo : abs + corpo) : String(abs);
+    if (!partes.length) partes.push(k < 0 ? "−" + txt : txt);
+    else partes.push((k < 0 ? " − " : " + ") + txt);
+  };
+  termo(a, "x²"); termo(b, "x"); termo(c, "");
+  return partes.join("") || "0";
+}
+
+// Forma completamente fatorada (tira o fator comum), ou null se já é igual.
+function formaCompleta(d1, d2) {
+  const g1 = mdc(d1.p, d1.q), g2 = mdc(d2.p, d2.q), k = g1 * g2;
+  if (k <= 1) return null;
+  const e1 = { p: d1.p / g1, q: d1.q / g1 }, e2 = { p: d2.p / g2, q: d2.q / g2 };
+  const txt = k + formatarProduto(e1, e2).replace(/^(?=x)/, "·");
+  return txt.replace("·", "") === formatarProduto(d1, d2) ? null : txt;
+}
+
+// Tamanho ocupado pela montagem (inclui as partes cobertas de vermelho).
+function extensaoSolucao(f, razao) {
+  return { w: f.p * razao + Math.max(f.q, 0), h: f.r * razao + Math.max(f.s, 0) };
+}
+
+// Posições da solução, relativas ao canto (0,0). Ver contagemSolucao.
+// Devolve Map id → {x, y, w, h} ou null se faltar alguma peça.
+function layoutSolucao(pecas, f, razao) {
+  const { p, q, r, s } = f;
+  const X = razao;
+  const pools = {};
+  for (const t of pecas) (pools[t.tipo + t.sinal] ||= []).push(t);
+  const destino = new Map();
+  const pega = (tipo, sinal, pos) => {
+    const lista = pools[tipo + sinal];
+    const t = lista && lista.shift();
+    if (!t) throw new Error("falta peça " + tipo + sinal);
+    destino.set(t.id, pos);
+  };
+  // colunas de largura 1 (à direita do bloco ou dentro dele) e linhas de altura 1
+  const colsX = [], linsY = [];
+  for (let k = 0; k < Math.abs(q); k++) colsX.push(q > 0 ? p * X + k : p * X - Math.abs(q) + k);
+  for (let l = 0; l < Math.abs(s); l++) linsY.push(s > 0 ? r * X + l : r * X - Math.abs(s) + l);
+  try {
+    for (let j = 0; j < r; j++) for (let i = 0; i < p; i++) pega("x2", 1, { x: i * X, y: j * X, w: X, h: X });
+    for (const cx of colsX) for (let j = 0; j < r; j++) pega("x", q > 0 ? 1 : -1, { x: cx, y: j * X, w: 1, h: X });
+    for (const ly of linsY) for (let i = 0; i < p; i++) pega("x", s > 0 ? 1 : -1, { x: i * X, y: ly, w: X, h: 1 });
+    for (const cx of colsX) for (const ly of linsY) pega("1", q * s > 0 ? 1 : -1, { x: cx, y: ly, w: 1, h: 1 });
+  } catch (e) { return null; }
+  // pares nulos que sobrarem: empilhados à direita (valem zero)
+  const sobraAzul = pools["x1"] || [], sobraVerm = pools["x-1"] || [];
+  let k = 0;
+  const w0 = extensaoSolucao(f, razao).w + 1;
+  while (sobraAzul.length && sobraVerm.length) {
+    const pos = { x: w0 + k * 1.6, y: 0, w: 1, h: X };
+    destino.set(sobraAzul.shift().id, pos); destino.set(sobraVerm.shift().id, { ...pos });
+    k++;
+  }
+  if (destino.size !== pecas.length) return null;
+  return destino;
+}
+
+// Distribui as peças em fileiras (bandeja), da esquerda para a direita.
+function layoutBandeja(pecas, larguraMax, folga) {
+  const pos = new Map();
+  let x = 0, y = 0, alturaLinha = 0, larguraUsada = 0, grupoAnterior = null;
+  for (const p of pecas) {
+    const grupo = p.tipo + p.sinal;
+    const extra = grupoAnterior && grupoAnterior !== grupo ? folga : 0;
+    if (x > 0 && x + extra + p.w > larguraMax) { x = 0; y += alturaLinha + folga; alturaLinha = 0; }
+    else x += extra;
+    pos.set(p.id, { x, y });
+    x += p.w + folga;
+    larguraUsada = Math.max(larguraUsada, x - folga);
+    alturaLinha = Math.max(alturaLinha, p.h);
+    grupoAnterior = grupo;
+  }
+  return { pos, w: larguraUsada, h: y + alturaLinha };
+}
+/* ==== FIM NUCLEO ==== */
+
+
+/* =====================================================================
+   INTERFACE
+   ===================================================================== */
+const NS = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+const svg = $("quadro");
+const camadaAzul = $("camadaAzul"), camadaVermelha = $("camadaVermelha");
+const camadaAnot = $("camadaAnot"), camadaFundo = $("camadaFundo"), camadaControle = $("camadaControle");
+
+const mq = (q) => window.matchMedia ? window.matchMedia(q).matches : false;
+const telaCompacta = () => mq("(max-width: 820px), (pointer: coarse)");
+const ehToque = () => mq("(pointer: coarse)");
+const celularDeitado = () => mq("(orientation: landscape) and (max-height: 520px)");
+const reduzirMovimento = () => mq("(prefers-reduced-motion: reduce)");
+
+// Tamanho do quadro em px de tela (o viewBox acompanha, então 1 unidade SVG = 1 px).
+const vista = { w: 1000, h: 640, alturaRef: 0, larguraRef: 0 };
+
+const estado = {
+  poli: null, fat: null, razao: 3.414, u: 40,
+  pecas: [], proxId: 0, pares: [], sel: null, bandeja: null,
+  animando: false, resolvido: false, mexeu: false
+};
+
+function el(tag, attrs = {}, pai) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (pai) pai.appendChild(e);
+  return e;
+}
+
+/* ---------- tamanho do quadro ---------- */
+function medirQuadro() {
+  const w = Math.max(260, Math.round($("quadroWrap").clientWidth));
+  // A maior altura de janela vista para esta largura: ignora o teclado virtual
+  // e o sobe-e-desce da barra de endereço do navegador do celular.
+  if (w !== vista.larguraRef) { vista.larguraRef = w; vista.alturaRef = 0; }
+  vista.alturaRef = Math.max(vista.alturaRef, window.innerHeight);
+  let h;
+  if (celularDeitado()) {
+    h = Math.max(220, vista.alturaRef - $("status").offsetHeight - 16);
+  } else if (telaCompacta()) {
+    const acima = $("barra").offsetHeight + $("status").offsetHeight + 20;
+    h = Math.max(300, Math.min(vista.alturaRef - acima, w * 1.8));
+  } else {
+    h = Math.max(420, w * 0.64);
+  }
+  h = Math.round(h);
+  vista.w = w; vista.h = h;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.style.height = h + "px";
+  $("fundoPontos").setAttribute("width", w);
+  $("fundoPontos").setAttribute("height", h);
+}
+
+function gerar(texto) {
+  $("erro").textContent = "";
+  let poli;
+  try {
+    poli = lerPolinomio(texto);
+    const { a, b, c } = poli;
+    if (a === 0) throw new Error("O polinômio precisa ter o termo x² (grau 2).");
+    if (a < 0) throw new Error("Deixe o coeficiente de x² positivo: coloque −1 em evidência e digite o trinômio que sobra.");
+    const L = CONFIG.LIMITES;
+    if (a > L.a || Math.abs(b) > L.b || Math.abs(c) > L.c || a + Math.abs(b) + Math.abs(c) > L.pecas)
+      throw new Error(`Números grandes demais para o quadro. Use até ${L.a}x², ${L.b}x e ${L.c} unidades (positivas ou negativas).`);
+  } catch (e) {
+    $("erro").textContent = e.message;
+    return false;
+  }
+  estado.poli = poli;
+  estado.fat = fatorar(poli.a, poli.b, poli.c);
+  estado.razao = escolherRazao(estado.fat);
+  estado.pecas = criarPecas(poli.a, poli.b, poli.c, estado.razao);
+  estado.proxId = estado.pecas.length;
+  estado.pares = [];
+  estado.sel = null;
+  estado.mexeu = false;
+  atualizarInventario();
+  medirQuadro();
+  dimensionar();
+  montarQuadro();
+  posicionarNaBandeja(false);
+  verificar();
+  return true;
+}
+
+// Chamado pelo usuário (botão, Enter, exemplo). No celular, fecha o teclado
+// e rola a tela até o quadro.
+function gerarPeloUsuario(texto) {
+  const compacta = telaCompacta();
+  if (compacta) $("campo").blur();
+  if (!gerar(texto)) return;
+  if (compacta) {
+    setTimeout(() => {
+      $("areaTrabalho").scrollIntoView({ behavior: reduzirMovimento() ? "auto" : "smooth", block: "start" });
+    }, 250);
+  }
+}
+
+// Escolhe o tamanho da unidade (px) para que a bandeja e o retângulo final caibam.
+function dimensionar() {
+  const { MARGEM_PX } = CONFIG;
+  const { poli, fat, razao, pecas } = estado;
+  let solW, solH;
+  if (fat) {
+    const e = extensaoSolucao(fat, razao);
+    const n = Math.max(0, paresNecessarios(poli.b, fat));
+    solW = e.w + (n ? 1 : 0); solH = e.h;
+  } else {
+    const area = Math.abs(poli.a) * razao * razao + Math.abs(poli.b) * razao + Math.abs(poli.c);
+    solW = solH = Math.sqrt(area) * 1.15;
+  }
+  const uMax = Math.min(64, 220 / razao);
+  let u = uMax;
+  for (; u > 5; u -= 0.5) {
+    const m = MARGEM_PX / u;
+    const larguraUtil = vista.w / u - 2 * m;
+    const b = layoutBandeja(pecas, larguraUtil, 0.6);
+    const alturaTotal = m + solH + 2.2 + b.h + m + 1.2;   // área de montagem + folga + bandeja
+    if (alturaTotal <= vista.h / u && solW <= larguraUtil) break;
+  }
+  estado.u = u;
+  estado.bandeja = layoutBandeja(pecas.filter(p => !p.par), vista.w / u - 2 * MARGEM_PX / u, 0.6);
+}
+
+function montarQuadro() {
+  const { u } = estado;
+  const { MARGEM_PX } = CONFIG;
+  selecionar(null);
+  camadaAzul.innerHTML = ""; camadaVermelha.innerHTML = ""; camadaAnot.innerHTML = ""; camadaFundo.innerHTML = "";
+  const m = MARGEM_PX / u;
+  estado.topoBandeja = vista.h / u - m - estado.bandeja.h;
+  const yDiv = (estado.topoBandeja - 0.8) * u;
+  el("line", { x1: 12, x2: vista.w - 12, y1: yDiv, y2: yDiv, class: "divisoria" }, camadaFundo);
+  const t1 = el("text", { x: 16, y: 32, id: "rotuloMonte", class: "rotulo-area", "font-size": vista.w < 500 ? 18 : 22 }, camadaFundo);
+  t1.textContent = "Monte o retângulo aqui";
+  const t2 = el("text", { x: vista.w - 16, y: yDiv - 10, class: "rotulo-area", "font-size": 18, "text-anchor": "end" }, camadaFundo);
+  t2.textContent = "peças";
+  for (const p of estado.pecas) criarElemento(p);
+}
+
+function criarElemento(p) {
+  const camada = p.sinal > 0 ? camadaAzul : camadaVermelha;   // vermelho sempre por cima
+  const g = el("g", { class: `peca ${p.sinal > 0 ? "pos" : "neg"} tipo-${p.tipo}`, "data-id": p.id }, camada);
+  const alvo = el("rect", { class: "alvo" }, g);                // amplia a área de toque
+  const r = el("rect", { class: "corpo", x: 0, y: 0, rx: 3, ry: 3 }, g);
+  const t = el("text", { "text-anchor": "middle", "dominant-baseline": "central" }, g);
+  const nome = p.tipo === "x2" ? "x²" : p.tipo === "x" ? "x" : "1";
+  t.textContent = (p.sinal < 0 ? "−" : "") + nome;
+  const tit = el("title", {}, g);
+  const desc = p.tipo === "x2" ? "Quadrado de lado x (área x²)" : p.tipo === "x" ? "Retângulo de lados x e 1 (área x)" : "Quadradinho de lado 1 (área 1)";
+  tit.textContent = desc + (p.sinal < 0 ? ", área negativa" : "") + (p.par ? " (par nulo)" : "");
+  p.el = g; p.rectEl = r; p.alvoEl = alvo; p.textEl = t;
+  desenharPeca(p);
+}
+
+function desenharPeca(p) {
+  const { u } = estado;
+  const W = p.w * u, H = p.h * u;
+  p.el.setAttribute("transform", `translate(${(p.x * u).toFixed(2)},${(p.y * u).toFixed(2)})`);
+  p.rectEl.setAttribute("width", W.toFixed(2));
+  p.rectEl.setAttribute("height", H.toFixed(2));
+  const folga = ehToque() ? Math.min(12, Math.max(0, (CONFIG.ALVO_TOQUE_PX - Math.min(W, H)) / 2)) : 0;
+  p.alvoEl.setAttribute("x", (-folga).toFixed(2));
+  p.alvoEl.setAttribute("y", (-folga).toFixed(2));
+  p.alvoEl.setAttribute("width", (W + 2 * folga).toFixed(2));
+  p.alvoEl.setAttribute("height", (H + 2 * folga).toFixed(2));
+  const menor = Math.min(W, H);
+  const fs = p.tipo === "x2" ? Math.min(menor * 0.36, 54) : Math.min(u * (p.sinal < 0 ? 0.62 : 0.72), 30);
+  p.textEl.setAttribute("font-size", fs.toFixed(1));
+  p.textEl.setAttribute("x", (W / 2).toFixed(2));
+  p.textEl.setAttribute("y", (H / 2).toFixed(2));
+}
+
+function posicionarNaBandeja(animar) {
+  const m = CONFIG.MARGEM_PX / estado.u;
+  const destino = new Map();
+  for (const p of estado.pecas) {
+    const b = estado.bandeja.pos.get(p.id);
+    const w = p.tipo === "x" ? 1 : p.w, h = p.tipo === "x" ? estado.razao : p.h;
+    destino.set(p.id, b ? { x: m + b.x, y: estado.topoBandeja + b.y, w, h } : { x: p.x, y: p.y, w: p.w, h: p.h });
+  }
+  moverPara(destino, animar);
+}
+
+function moverPara(destino, animar) {
+  const done = () => { estado.animando = false; verificar(); atualizarAlca(); };
+  if (!animar || reduzirMovimento()) {
+    for (const p of estado.pecas) { Object.assign(p, destino.get(p.id)); desenharPeca(p); }
+    done(); return;
+  }
+  estado.animando = true;
+  limparSucesso();
+  atualizarAlca();
+  const inicio = new Map(estado.pecas.map(p => [p.id, { x: p.x, y: p.y }]));
+  for (const p of estado.pecas) { const d = destino.get(p.id); p.w = d.w; p.h = d.h; }
+  const t0 = performance.now(), dur = 750;
+  const passo = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    for (const p of estado.pecas) {
+      const a = inicio.get(p.id), d = destino.get(p.id);
+      p.x = a.x + (d.x - a.x) * e; p.y = a.y + (d.y - a.y) * e;
+      desenharPeca(p);
+    }
+    if (k < 1) requestAnimationFrame(passo);
+    else { for (const p of estado.pecas) { const d = destino.get(p.id); p.x = d.x; p.y = d.y; desenharPeca(p); } done(); }
+  };
+  requestAnimationFrame(passo);
+}
+
+// Quando a tela muda de tamanho (girar o aparelho, redimensionar a janela):
+// refaz a escala. Se o aluno ainda não mexeu, as peças voltam à bandeja;
+// senão, ficam onde estavam (em unidades de x), apenas mantidas dentro do quadro.
+function reconstruir() {
+  if (!estado.poli) return;
+  dimensionar();
+  montarQuadro();
+  if (!estado.mexeu) { posicionarNaBandeja(false); return; }
+  for (const p of estado.pecas) { Object.assign(p, limitar(p, p.x, p.y)); desenharPeca(p); }
+  verificar();
+}
+
+let esperaResize = null;
+function aoRedimensionar() {
+  clearTimeout(esperaResize);
+  esperaResize = setTimeout(() => {
+    if (arrasto || estado.animando) { aoRedimensionar(); return; }
+    const antes = { w: vista.w, h: vista.h };
+    const w = Math.round($("quadroWrap").clientWidth);
+    // No celular, só a mudança de largura (ex.: girar o aparelho) refaz o quadro.
+    if (telaCompacta() && Math.abs(w - antes.w) < 2) return;
+    medirQuadro();
+    if (Math.abs(antes.w - vista.w) >= 2 || Math.abs(antes.h - vista.h) >= 2) reconstruir();
+  }, 180);
+}
+window.addEventListener("resize", aoRedimensionar);
+window.addEventListener("orientationchange", aoRedimensionar);
+
+function atualizarInventario() {
+  const { a, b, c } = estado.poli;
+  const partes = [];
+  const item = (n, nome) => {
+    if (!n) return;
+    const cls = n < 0 ? "neg" : "pos";
+    partes.push(`<span class="${cls}">${Math.abs(n)} × ${n < 0 ? "(−" + nome + ")" : nome}</span>`);
+  };
+  item(a, "x²"); item(b, "x"); item(c, "1");
+  const np = estado.pares.length;
+  if (np) partes.push(`${np} par${np > 1 ? "es" : ""} nulo${np > 1 ? "s" : ""}`);
+  $("inventario").innerHTML = formatarPolinomio(a, b, c) + "  →  " + partes.join(",  ");
+  $("btnParMenos").disabled = np === 0;
+  $("btnParMais").disabled = np >= limitePares();
+}
+
+/* ---------- pares nulos ---------- */
+function limitePares() {
+  const precisa = estado.fat ? paresNecessarios(estado.poli.b, estado.fat) : 0;
+  return Math.max(CONFIG.LIMITES.pares, precisa + 2);
+}
+
+// Procura um espaço livre na área de montagem para um retângulo w × h.
+function lugarLivre(w, h) {
+  const m = CONFIG.MARGEM_PX / estado.u, W = vista.w / estado.u;
+  const yMax = estado.topoBandeja - 0.8 - h - 0.2;
+  const livre = (x, y) => estado.pecas.every(o => x + w + 0.3 <= o.x || x >= o.x + o.w + 0.3 || y + h + 0.3 <= o.y || y >= o.y + o.h + 0.3);
+  for (let y = m + 1.2; y <= yMax; y += 0.5) {
+    for (let x = W - m - w; x >= m; x -= 0.5) if (livre(x, y)) return { x, y };
+  }
+  return { x: Math.max(m, W - m - w), y: m + 1.2 };
+}
+
+function adicionarPar() {
+  if (!estado.poli || estado.animando || estado.pares.length >= limitePares()) return null;
+  const X = estado.razao;
+  const azul = novaPeca(estado.proxId++, "x", 1, X);
+  const verm = novaPeca(estado.proxId++, "x", -1, X);
+  azul.par = verm.par = true;
+  const pos = lugarLivre(2.4, X);
+  azul.x = pos.x; azul.y = pos.y;
+  verm.x = pos.x + 1.4; verm.y = pos.y;
+  estado.pecas.push(azul, verm);
+  estado.pares.push([azul.id, verm.id]);
+  estado.mexeu = true;
+  criarElemento(azul); criarElemento(verm);
+  atualizarInventario();
+  return [azul, verm];
+}
+
+function removerPar() {
+  if (estado.animando || !estado.pares.length) return;
+  const ids = estado.pares.pop();
+  for (const id of ids) {
+    const p = estado.pecas.find(t => t.id === id);
+    if (p) { if (estado.sel === p) selecionar(null); p.el.remove(); }
+  }
+  estado.pecas = estado.pecas.filter(t => !ids.includes(t.id));
+  atualizarInventario();
+  verificar();
+}
+
+/* ---------- arrastar, ímã e girar ---------- */
+function pontoSVG(ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// Aproxima as bordas da peça das bordas das outras peças próximas.
+function aplicarIma(p, nx, ny, tipoPonteiro) {
+  const lim = (tipoPonteiro === "mouse" ? CONFIG.IMA_PX : CONFIG.IMA_TOQUE_PX) / estado.u;
+  let melhorX = null, melhorY = null;
+  for (const o of estado.pecas) {
+    if (o === p) continue;
+    const pertoV = ny - lim < o.y + o.h && ny + p.h + lim > o.y;
+    const pertoH = nx - lim < o.x + o.w && nx + p.w + lim > o.x;
+    if (pertoV) {
+      for (const borda of [o.x, o.x + o.w]) {
+        for (const d of [borda - nx, borda - (nx + p.w)]) {
+          if (Math.abs(d) < lim && (melhorX === null || Math.abs(d) < Math.abs(melhorX))) melhorX = d;
+        }
+      }
+    }
+    if (pertoH) {
+      for (const borda of [o.y, o.y + o.h]) {
+        for (const d of [borda - ny, borda - (ny + p.h)]) {
+          if (Math.abs(d) < lim && (melhorY === null || Math.abs(d) < Math.abs(melhorY))) melhorY = d;
+        }
+      }
+    }
+  }
+  return { x: nx + (melhorX ?? 0), y: ny + (melhorY ?? 0) };
+}
+
+function limitar(p, x, y) {
+  const W = vista.w / estado.u, H = vista.h / estado.u;
+  return { x: Math.max(0, Math.min(W - p.w, x)), y: Math.max(0, Math.min(H - p.h, y)) };
+}
+
+function selecionar(p) {
+  if (estado.sel && estado.sel.el) estado.sel.el.classList.remove("sel");
+  estado.sel = p;
+  if (p) p.el.classList.add("sel");
+  $("btnGirar").disabled = !(p && p.tipo === "x");
+  atualizarAlca();
+}
+
+// Botão redondo de girar, ao lado do retângulo x por 1 selecionado.
+function atualizarAlca() {
+  camadaControle.innerHTML = "";
+  const p = estado.sel;
+  if (!p || p.tipo !== "x" || estado.animando || (arrasto && arrasto.moveu)) return;
+  const u = estado.u, r = ehToque() ? 21 : 15;
+  let cx = (p.x + p.w) * u + r * 0.7, cy = p.y * u - r * 0.7;
+  if (cx > vista.w - r - 2) cx = p.x * u - r * 0.7;           // sem espaço à direita: vai para a esquerda
+  cx = Math.min(vista.w - r - 2, Math.max(r + 2, cx));
+  cy = Math.min(vista.h - r - 2, Math.max(r + 2, cy));
+  const g = el("g", { class: "alca-girar", role: "button", "aria-label": "Girar peça" }, camadaControle);
+  el("circle", { cx, cy, r }, g);
+  const t = el("text", { x: cx, y: cy + 1, "text-anchor": "middle", "dominant-baseline": "central", "font-size": (r * 1.15).toFixed(1) }, g);
+  t.textContent = "↻";
+}
+
+function girar(p) {
+  if (!p || p.tipo !== "x" || estado.animando) return;
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+  [p.w, p.h] = [p.h, p.w];
+  let pos = limitar(p, cx - p.w / 2, cy - p.h / 2);
+  pos = aplicarIma(p, pos.x, pos.y, "mouse");
+  pos = limitar(p, pos.x, pos.y);
+  p.x = pos.x; p.y = pos.y;
+  estado.mexeu = true;
+  desenharPeca(p);
+  verificar();
+  atualizarAlca();
+}
+
+let arrasto = null, ultimoToque = { id: null, t: 0 }, ultimoTipoPonteiro = "mouse";
+const pecaDoAlvo = (alvo) => {
+  const g = alvo.closest && alvo.closest(".peca");
+  return g ? estado.pecas.find(t => t.id === +g.dataset.id) : null;
+};
+
+svg.addEventListener("pointerdown", (ev) => {
+  if (arrasto) return;                       // ignora um segundo dedo
+  ultimoTipoPonteiro = ev.pointerType || "mouse";
+  if (ev.target.closest && ev.target.closest(".alca-girar")) { girar(estado.sel); ev.preventDefault(); return; }
+  const p = pecaDoAlvo(ev.target);
+  if (!p || estado.animando) { if (!p) selecionar(null); return; }
+  if (ev.button === 2) return;
+  selecionar(p);
+  p.el.parentNode.appendChild(p.el);        // traz para a frente dentro da sua camada
+  const pt = pontoSVG(ev);
+  arrasto = { p, dx: pt.x / estado.u - p.x, dy: pt.y / estado.u - p.y, x0: ev.clientX, y0: ev.clientY, moveu: false, pid: ev.pointerId, tipo: ultimoTipoPonteiro };
+  try { svg.setPointerCapture(ev.pointerId); } catch (e) {}
+  p.el.classList.add("arrastando");
+  ev.preventDefault();
+});
+
+svg.addEventListener("pointermove", (ev) => {
+  if (!arrasto || ev.pointerId !== arrasto.pid) return;
+  const limiarMov = arrasto.tipo === "mouse" ? 4 : 8;
+  if (!arrasto.moveu && Math.hypot(ev.clientX - arrasto.x0, ev.clientY - arrasto.y0) > limiarMov) {
+    arrasto.moveu = true;
+    camadaControle.innerHTML = "";
+  }
+  if (!arrasto.moveu) return;
+  const { p } = arrasto;
+  const pt = pontoSVG(ev);
+  let pos = limitar(p, pt.x / estado.u - arrasto.dx, pt.y / estado.u - arrasto.dy);
+  pos = aplicarIma(p, pos.x, pos.y, arrasto.tipo);
+  pos = limitar(p, pos.x, pos.y);
+  p.x = pos.x; p.y = pos.y;
+  desenharPeca(p);
+  if (estado.resolvido) limparSucesso();
+});
+
+function fimArrasto(ev) {
+  if (!arrasto || ev.pointerId !== arrasto.pid) return;
+  const { p, moveu } = arrasto;
+  p.el.classList.remove("arrastando");
+  arrasto = null;
+  if (!moveu) {
+    const agora = performance.now();
+    if (ultimoToque.id === p.id && agora - ultimoToque.t < 380) { girar(p); ultimoToque = { id: null, t: 0 }; return; }
+    ultimoToque = { id: p.id, t: agora };
+    atualizarAlca();
+    return;
+  }
+  estado.mexeu = true;
+  verificar();
+  atualizarAlca();
+}
+svg.addEventListener("pointerup", fimArrasto);
+svg.addEventListener("pointercancel", fimArrasto);
+
+svg.addEventListener("contextmenu", (ev) => {
+  ev.preventDefault();                       // evita o menu do toque longo no celular
+  if (ultimoTipoPonteiro !== "mouse") return;
+  const p = pecaDoAlvo(ev.target);
+  if (!p) return;
+  selecionar(p); girar(p);
+});
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.target === $("campo")) return;
+  if ((ev.key === "r" || ev.key === "R") && estado.sel) { girar(estado.sel); ev.preventDefault(); }
+});
+
+/* ---------- verificação e resultado ---------- */
+function limparSucesso() {
+  estado.resolvido = false;
+  camadaAnot.innerHTML = "";
+  $("resultado").hidden = true;
+}
+
+function verificar() {
+  if (!estado.poli) return;
+  const rotulo = document.getElementById("rotuloMonte");
+  if (rotulo) rotulo.style.display = estado.mexeu ? "none" : "";
+  const res = analisarPecas(estado.pecas);
+  const { a, b, c } = estado.poli;
+  if (res.ok) {
+    const d1 = identificarLado(res.W, estado.razao);   // largura
+    const d2 = identificarLado(res.H, estado.razao);   // altura
+    const confere = d1 && d2 && d1.p * d2.p === a && d1.p * d2.q + d1.q * d2.p === b && d1.q * d2.q === c;
+    if (confere) { mostrarSucesso(res, d1, d2); return; }
+  }
+  limparSucesso();
+  const curto = telaCompacta();
+  const msgs = curto ? {
+    sobreposicao: "Há áreas azuis sobrepostas.",
+    negativo: "Sobrou área negativa: cada vermelho deve ficar sobre azul.",
+  } : {
+    sobreposicao: "Há áreas azuis sobrepostas. Cada região deve ser coberta por uma única peça azul (ou cancelada por uma vermelha).",
+    negativo: "Sobrou área negativa: cada parte vermelha precisa estar sobre uma área azul. Onde duas vermelhas se cruzam, falta devolver um pedaço azul.",
+  };
+  const sobrepoe = (r, o) => r.x < o.x + o.w - 1e-6 && o.x < r.x + r.w - 1e-6 && r.y < o.y + o.h - 1e-6 && o.y < r.y + r.h - 1e-6;
+  const soltas = estado.pecas.some(r => r.sinal < 0 && !estado.pecas.some(o => o.sinal > 0 && sobrepoe(r, o)));
+  let msg = (!soltas && msgs[res.motivo]) || (curto
+    ? "Use <strong>todas</strong> as peças e forme um único retângulo."
+    : "Use <strong>todas</strong> as peças para formar um único retângulo, sem buracos e sem sobreposição.");
+  if ((soltas || !msgs[res.motivo]) && estado.fat && paresNecessarios(b, estado.fat) > estado.pares.length)
+    msg += curto ? " Faltam peças? Tente um <strong>par nulo</strong>."
+                 : " Faltam peças? Um <strong>par nulo</strong> (um x azul e um x vermelho) vale zero e pode ajudar.";
+  $("status").innerHTML = msg;
+}
+
+function mostrarSucesso(res, dW, dH) {
+  const jaEstava = estado.resolvido;
+  estado.resolvido = true;
+  const { u } = estado;
+  camadaAnot.innerHTML = "";
+  const x = res.x * u, y = res.y * u, W = res.W * u, H = res.H * u;
+  const fs = vista.w < 500 ? 22 : 26;
+  el("rect", { x, y, width: W, height: H, class: "area-final" }, camadaAnot);
+  el("rect", { x: x - 6, y: y - 6, width: W + 12, height: H + 12, rx: 8, class: "contorno" }, camadaAnot);
+
+  // cota superior (ou inferior, se não houver espaço)
+  const acima = y > 52;
+  const yc = acima ? y - 20 : y + H + 20;
+  el("line", { x1: x, x2: x + W, y1: yc, y2: yc }, camadaAnot);
+  el("line", { x1: x, x2: x, y1: yc - 7, y2: yc + 7 }, camadaAnot);
+  el("line", { x1: x + W, x2: x + W, y1: yc - 7, y2: yc + 7 }, camadaAnot);
+  const tW = el("text", { x: x + W / 2, y: acima ? yc - 10 : yc + 28, "text-anchor": "middle", "font-size": fs }, camadaAnot);
+  tW.textContent = formatarLinear(dW.p, dW.q);
+
+  // cota lateral (esquerda, direita ou, sem espaço, por dentro)
+  const rotuloH = formatarLinear(dH.p, dH.q);
+  const larguraRotulo = rotuloH.length * fs * 0.5 + 34;
+  let lado = x > larguraRotulo ? "esq" : (vista.w - (x + W) > larguraRotulo ? "dir" : "dentro");
+  const xc = lado === "esq" ? x - 20 : lado === "dir" ? x + W + 20 : x + 14;
+  el("line", { x1: xc, x2: xc, y1: y, y2: y + H }, camadaAnot);
+  el("line", { x1: xc - 7, x2: xc + 7, y1: y, y2: y }, camadaAnot);
+  el("line", { x1: xc - 7, x2: xc + 7, y1: y + H, y2: y + H }, camadaAnot);
+  const tH = el("text", {
+    x: lado === "esq" ? xc - 12 : xc + 12, y: y + H / 2,
+    "text-anchor": lado === "esq" ? "end" : "start", "dominant-baseline": "central", "font-size": fs
+  }, camadaAnot);
+  tH.textContent = rotuloH;
+
+  const { a, b, c } = estado.poli;
+  const produto = formatarProduto(dW, dH);
+  const temNegativo = estado.pecas.some(p => p.sinal < 0);
+  $("resultadoTexto").textContent =
+    `Você formou um retângulo de lados ${formatarLinear(dW.p, dW.q)} e ${formatarLinear(dH.p, dH.q)}` +
+    (temNegativo ? " (a área verde é o que sobra depois que o vermelho cancela o azul)" : "") +
+    ". A área dele é o polinômio, então:";
+  $("resultadoEquacao").textContent = `${formatarPolinomio(a, b, c)} = ${produto}`;
+  const extras = [];
+  const comp = formaCompleta(dW, dH);
+  if (comp) extras.push(`Colocando o fator comum em evidência: ${produto} = ${comp}.`);
+  const np = estado.pares.length;
+  const nx = np === 1 ? "x" : np + "x";
+  if (np) extras.push(`Você usou ${np} par${np > 1 ? "es" : ""} nulo${np > 1 ? "s" : ""}: +${nx} − ${nx} = 0, então o polinômio não mudou.`);
+  $("resultadoExtra").textContent = extras.join(" ");
+  // no celular deitado não há espaço para o cartão: a equação fica na linha de status
+  if (!jaEstava && !celularDeitado()) $("resultado").hidden = false;
+  $("status").innerHTML = `<strong>Retângulo completo!</strong> <span style="white-space:nowrap">${formatarPolinomio(a, b, c)} = ${produto}</span>`;
+}
+
+/* ---------- botões e teclado ---------- */
+$("btnGerar").addEventListener("click", () => gerarPeloUsuario($("campo").value));
+$("campo").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); gerarPeloUsuario($("campo").value); } });
+$("btnGirar").addEventListener("click", () => girar(estado.sel));
+$("btnParMais").addEventListener("click", () => { if (adicionarPar()) verificar(); });
+$("btnParMenos").addEventListener("click", removerPar);
+$("btnFecharResultado").addEventListener("click", () => { $("resultado").hidden = true; });
+$("btnReiniciar").addEventListener("click", () => {
+  if (estado.animando || !estado.poli) return;
+  selecionar(null);
+  while (estado.pares.length) removerPar();
+  estado.mexeu = false;
+  posicionarNaBandeja(true);
+});
+$("btnSolucao").addEventListener("click", () => {
+  if (!estado.poli || estado.animando) return;
+  const { a, b, c } = estado.poli;
+  if (!estado.fat) {
+    const delta = b * b - 4 * a * c;
+    const d = String(delta).replace("-", "−");
+    $("status").innerHTML = telaCompacta()
+      ? `<strong>Sem solução:</strong> Δ = ${d} não é quadrado perfeito.`
+      : `<strong>Não há solução com essas peças.</strong> Δ = b² − 4ac = ${d}, que não é um quadrado perfeito; por isso ${formatarPolinomio(a, b, c)} não se fatora com números inteiros e as peças não formam um retângulo.`;
+    return;
+  }
+  const precisa = paresNecessarios(b, estado.fat);
+  while (estado.pares.length > precisa) removerPar();
+  while (estado.pares.length < precisa) if (!adicionarPar()) break;
+  const rel = layoutSolucao(estado.pecas, estado.fat, estado.razao);
+  if (!rel) { $("status").textContent = "Não foi possível montar a solução automaticamente."; return; }
+  const u = estado.u, m = CONFIG.MARGEM_PX / u;
+  const ext = extensaoSolucao(estado.fat, estado.razao);
+  let largura = ext.w;
+  for (const d of rel.values()) largura = Math.max(largura, d.x + d.w);
+  const ox = Math.max(m, (vista.w / u - largura) / 2);
+  const oy = Math.max(m + 1.6, (estado.topoBandeja - 0.8 - ext.h) / 2);
+  const destino = new Map();
+  for (const [id, d] of rel) destino.set(id, { x: ox + d.x, y: oy + d.y, w: d.w, h: d.h });
+  selecionar(null);
+  estado.mexeu = true;
+  moverPara(destino, true);
+});
+
+// Atalhos de digitação (x², x, +, −): inserem no cursor sem fechar o teclado.
+for (const bt of document.querySelectorAll("#teclado button")) {
+  bt.addEventListener("pointerdown", (ev) => { if (document.activeElement === $("campo")) ev.preventDefault(); });
+  bt.addEventListener("click", () => {
+    const c = $("campo");
+    const i = c.selectionStart ?? c.value.length, j = c.selectionEnd ?? i;
+    let v = c.value, pos = i;
+    if (bt.dataset.acao === "limpar") { v = ""; pos = 0; }
+    else if (bt.dataset.acao === "apagar") {
+      if (i !== j) { v = v.slice(0, i) + v.slice(j); pos = i; }
+      else if (i > 0) { v = v.slice(0, i - 1) + v.slice(i); pos = i - 1; }
+    } else {
+      const ins = bt.dataset.ins;
+      v = v.slice(0, i) + ins + v.slice(j); pos = i + ins.length;
+    }
+    c.value = v;
+    try { c.setSelectionRange(pos, pos); } catch (e) {}
+  });
+}
+
+for (const ex of CONFIG.EXEMPLOS) {
+  const bt = document.createElement("button");
+  bt.type = "button"; bt.textContent = ex.replace("^2", "²").replace(/-/g, "−");
+  if (ex.includes("-")) bt.classList.add("com-negativo");
+  bt.addEventListener("click", () => { $("campo").value = ex.replace("^2", "²").replace(/-/g, "−"); gerarPeloUsuario(ex); });
+  $("exemplos").appendChild(bt);
+}
+
+gerar($("campo").value);
+</script>
+</body>
+</html>

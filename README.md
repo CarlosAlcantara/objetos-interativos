@@ -4,6 +4,7 @@ Páginas interativas de apoio ao material didático das disciplinas Conteúdos M
 
 - `index.html`: página inicial com a lista de todas as páginas e abas.
 - Cada pasta (por exemplo, `trigonometria/`) contém um único `index.html`, autônomo, sem dependências externas.
+- `pecas-algebra/`, `parabola/` e `planificacoes/` são cópias sem alteração dos sites já publicados.
 - Uma aba pode ser aberta diretamente pelo endereço da página seguido de `#aba-<nome>`, por exemplo `trigonometria/#aba-circulo`.
 
 ## Publicação no GitHub Pages

@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Aplicação para estudar a parábola a partir do foco e da reta diretriz.">
+<title>Foco e Diretriz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+html,body{margin:0}
+body{font-size:15px;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+/* Layout: plano cartesiano em papel milimetrado ocupa a tela; painel lateral de "caderno" com as expressões */
+:root{
+  --paper:#f3f6f9;
+  --panel:#ffffff;
+  --ink:#16223a;
+  --muted:#5b6880;
+  --grid:#dde5ee;
+  --grid-strong:#c3cfdc;
+  --axis:#3a4a66;
+  --curve:#2346c8;
+  --focus:#d9822b;
+  --dir:#118a7e;
+  --pt:#b2306b;
+  --line:#e2e8f0;
+  --chip:#eef2f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-math:"STIX Two Text", "Cambria Math", "Times New Roman", serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Consolas", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1726; --panel:#141e30; --ink:#e6ecf5; --muted:#93a1b8;
+  --grid:#1b2740; --grid-strong:#26344f; --axis:#9fb0cc; --curve:#7d9bff;
+  --focus:#f2a65a; --dir:#3fc7b5; --pt:#ef6fa5; --line:#24314a; --chip:#1c2840;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1726; --panel:#141e30; --ink:#e6ecf5; --muted:#93a1b8;
+  --grid:#1b2740; --grid-strong:#26344f; --axis:#9fb0cc; --curve:#7d9bff;
+  --focus:#f2a65a; --dir:#3fc7b5; --pt:#ef6fa5; --line:#24314a; --chip:#1c2840;
+  color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-display);font-size:15px}
+*{box-sizing:border-box}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100%;min-height:0}
+.stage{position:relative;min-width:0;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+canvas.grab{cursor:grab}
+canvas.grabbing{cursor:grabbing}
+.zoom{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:6px}
+.zoom button,.btn{font:600 14px var(--f-display);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.zoom button{width:38px;height:38px;font-size:18px}
+.zoom button:hover,.btn:hover{border-color:var(--curve)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--curve);outline-offset:2px}
+.hint{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--muted);max-width:calc(100% - 24px)}
+.hint b{font-weight:600}
+.hint .f{color:var(--focus)} .hint .d{color:var(--dir)} .hint .p{color:var(--pt)}
+
+aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:20px 28px;padding-left:max(20px, env(safe-area-inset-left,0px));padding-right:max(20px, env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 8px}
+
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.group{display:flex;flex-direction:column;gap:6px}
+.group h3{margin:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.group h3 i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.callout{font-size:13.5px;line-height:1.5;border-left:3px solid var(--curve);padding:4px 0 4px 10px;margin:0;color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font:italic 15px var(--f-math);display:flex;align-items:center;gap:6px}
+.field label i.sw{width:10px;height:10px;border-radius:50%;display:inline-block}
+.field input{width:100%;font:15px var(--f-mono);padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-variant-numeric:tabular-nums}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:500 13px var(--f-mono);padding:6px 10px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--curve);color:#fff}
+.toggle{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
+.toggle input{accent-color:var(--curve);width:16px;height:16px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets .btn{font:italic 15px var(--f-math);padding:5px 10px}
+
+.forms{display:flex;flex-direction:column;gap:10px}
+.form{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.form.main{background:var(--chip);border-color:transparent}
+.form .name{font-size:12px;color:var(--muted);margin-bottom:4px}
+.math{font-family:var(--f-math);font-size:21px;line-height:1.6;overflow-x:auto;white-space:nowrap}
+.form.main .math{font-size:26px}
+.math i{font-style:italic}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.72em;line-height:1.1;margin:0 .1em}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .15em}
+.sqrt{border-top:1px solid currentColor;padding-top:1px}
+.warn{color:var(--pt);font-size:14px}
+
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:0}
+.dist{font-family:var(--f-mono);font-size:14px;display:flex;flex-wrap:wrap;gap:6px 14px}
+.dist span b{font-weight:600}
+.dist .pf{color:var(--focus)} .dist .pd{color:var(--dir)}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+
+@media (max-width: 860px){
+  .app{grid-template-columns:1fr;grid-template-rows:62vh auto;height:auto}
+  .stage{height:62vh;min-height:340px}
+  aside{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <canvas id="cv" aria-label="Plano cartesiano com foco, diretriz e parábola"></canvas>
+    <div class="hint">Arraste o <b class="f">foco F</b>, a <b class="d">diretriz</b>, a <b class="d">alça ⟳</b> para girá-la ou o <b class="p">ponto P</b>. Arraste o fundo para mover o plano.</div>
+    <div class="zoom">
+      <button id="zin" type="button" aria-label="Aproximar">+</button>
+      <button id="zout" type="button" aria-label="Afastar">−</button>
+      <button id="zreset" type="button" aria-label="Centralizar" style="font-size:13px">⌂</button>
+    </div>
+  </div>
+
+  <aside>
+    <div>
+      <h1>Foco e Diretriz</h1>
+      <p class="sub">A parábola é o conjunto dos pontos que estão à mesma distância do foco e da reta diretriz.</p>
+    </div>
+
+    <section class="group">
+      <h3><i style="background:var(--focus)"></i>Foco F</h3>
+      <div class="controls">
+        <div class="field"><label for="inH">x<sub>F</sub></label><input id="inH" type="number" step="0.25"></div>
+        <div class="field"><label for="inK">y<sub>F</sub></label><input id="inK" type="number" step="0.25"></div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3><i style="background:var(--dir)"></i>Diretriz: passa por Q e tem ângulo θ</h3>
+      <div class="controls">
+        <div class="field"><label for="inQx">x<sub>Q</sub></label><input id="inQx" type="number" step="0.25"></div>
+        <div class="field"><label for="inQy">y<sub>Q</sub></label><input id="inQy" type="number" step="0.25"></div>
+        <div class="field"><label for="inT">θ (graus)</label><input id="inT" type="number" step="1"></div>
+      </div>
+    </section>
+
+    <section class="row" style="justify-content:space-between">
+      <div class="row"><span class="note">Passo</span>
+        <div class="seg" id="snap">
+          <button type="button" data-s="0.01">livre</button>
+          <button type="button" data-s="0.25">¼</button>
+          <button type="button" data-s="0.5">½</button>
+          <button type="button" data-s="1">1</button>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="showP" checked> ponto P</label>
+    </section>
+
+    <section>
+      <p class="label">Equação da parábola</p>
+      <div class="forms" id="forms"></div>
+    </section>
+
+    <section>
+      <p class="label">Distâncias do ponto P</p>
+      <div class="dist" id="dist"></div>
+    </section>
+
+    <section>
+      <p class="label">Características</p>
+      <dl class="facts" id="facts"></dl>
+    </section>
+
+    <section>
+      <p class="label">Exemplos</p>
+      <div class="presets" id="presets">
+        <button class="btn" type="button" data-p="0,0.25,0,-0.25,0">y = x²</button>
+        <button class="btn" type="button" data-p="0,3.75,0,4.25,0">y = −x² + 4</button>
+        <button class="btn" type="button" data-p="2,-1.5,0,-2.5,0">y = ½x² − 2x</button>
+        <button class="btn" type="button" data-p="2,0,0,0,90">x = ¼y² + 1</button>
+        <button class="btn" type="button" data-p="0,2,0,0,45">diretriz y = x</button>
+      </div>
+    </section>
+
+    <p class="note">Com o passo ¼, ½ ou 1, o giro “encaixa” em inclinações 0, ±⅓, ±½, ±1, ±2, ±3 e vertical, e a reta passa por pontos da malha. Assim a equação geral sai com coeficientes inteiros.</p>
+    <p class="note">Para investigar: o que acontece com a abertura quando o foco se aproxima da diretriz? Em que posições da diretriz a parábola é gráfico de uma função de x?</p>
+  </aside>
+</div>
+
+<script>
+(()=>{
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const S={h:1,k:2,qx:1,qy:0,th:0,t:2,step:0.25,showP:true};
+const V={cx:0,cy:1,u:40};
+let W=0,H=0,dpr=1;
+const EPS=1e-9;
+
+/* ---------- geometria ---------- */
+const isH=()=>Math.abs(Math.sin(S.th))<1e-12;
+const isV=()=>Math.abs(Math.cos(S.th))<1e-12;
+function dirs(){
+  if(isH()) return {u:[1,0],n:[0,1]};
+  if(isV()) return {u:[0,1],n:[-1,0]};
+  const c=Math.cos(S.th), s=Math.sin(S.th);
+  return {u:[c,s],n:[-s,c]};
+}
+function normTh(a){ while(a>Math.PI/2+1e-12)a-=Math.PI; while(a<=-Math.PI/2+1e-12)a+=Math.PI; return a; }
+function model(){
+  const {u,n}=dirs(), c=n[0]*S.qx+n[1]*S.qy;
+  const s=n[0]*S.h+n[1]*S.k-c;
+  if(Math.abs(s)<EPS) return null;
+  const V0=[S.h-s/2*n[0], S.k-s/2*n[1]];
+  const A=1-n[0]**2, B=-2*n[0]*n[1], C=1-n[1]**2, D=-2*S.h+2*c*n[0], E=-2*S.k+2*c*n[1], F=S.h**2+S.k**2-c*c;
+  return {u,n,c,s,p:s/2,V:V0,A,B,C,D,E,F};
+}
+const ptAt=(m,t)=>[m.V[0]+t*m.u[0]+t*t/(2*m.s)*m.n[0], m.V[1]+t*m.u[1]+t*t/(2*m.s)*m.n[1]];
+const snap=v=>Math.round(v/S.step)*S.step;
+const clean=v=>Math.round(v*1e6)/1e6;
+const SNAP_ANG=[0,1/3,1/2,1,2,3].flatMap(m=>m?[Math.atan(m),-Math.atan(m)]:[0]).concat([Math.PI/2]);
+
+/* ---------- números ---------- */
+function fracOf(x,maxD=400){
+  if(Math.abs(x-Math.round(x))<1e-7) return {n:Math.round(x),d:1};
+  for(let d=2;d<=maxD;d++){const n=Math.round(x*d); if(Math.abs(n/d-x)<1e-7*Math.max(1,Math.abs(x))) return {n,d};}
+  return null;
+}
+const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;};
+function intCoefs(arr){ // múltiplo inteiro primitivo, 1º não nulo positivo; null se irracional
+  const fr=arr.map(v=>fracOf(v)); if(fr.some(f=>!f)) return null;
+  const L=fr.reduce((l,f)=>l*f.d/gcd(l,f.d),1);
+  let ints=fr.map(f=>f.n*L/f.d);
+  if(ints.some(v=>Math.abs(v)>1e7)) return null;
+  const g=ints.reduce((g,v)=>v?gcd(g,v):g,0)||1;
+  ints=ints.map(v=>v/g);
+  const first=ints.find(v=>v!==0); if(first<0) ints=ints.map(v=>-v);
+  return ints;
+}
+const dec=(x,n=2)=>{let s=(+x.toFixed(n)).toString(); if(s==='-0')s='0'; return s.replace('-','−').replace('.',',');};
+function numH(x,decOnly){
+  x=Math.abs(x); const f=decOnly?null:fracOf(x,128);
+  if(!f) return dec(x);
+  if(f.d===1) return String(f.n);
+  return `<span class="fr"><span>${f.n}</span><span>${f.d}</span></span>`;
+}
+const isZero=x=>Math.abs(x)<1e-9;
+const sgn=(x,first)=> x<0 ? (first?'−':' − ') : (first?'':' + ');
+function coef(x,first,decOnly){ const s=sgn(x,first); return Math.abs(Math.abs(x)-1)<1e-9 ? s : s+numH(x,decOnly); }
+function poly(terms,decOnly){ // terms: [[valor, monômio ou '']]
+  let out='', first=true;
+  for(const [v,mono] of terms){
+    const vv=decOnly?+v.toFixed(2):v;
+    if(isZero(vv)) continue;
+    out+= mono ? coef(vv,first,decOnly)+mono : sgn(vv,first)+numH(vv,decOnly);
+    first=false;
+  }
+  return out||'0';
+}
+function shift(v,name){ if(isZero(v)) return `<i>${name}</i>`; return `(<i>${name}</i>${v>0?' − ':' + '}${numH(v)})`; }
+const X='<i>x</i>', Y='<i>y</i>';
+function sqrtH(N){ const r=Math.round(Math.sqrt(N)); return r*r===N? String(r) : `√${N}`; }
+// reta αx + βy + γ = 0 em forma legível
+function lineH(a,b,g){
+  const I=intCoefs([a,b,g]);
+  if(I){ [a,b,g]=I; }
+  const d=!I;
+  if(isZero(a)) return `${Y} = ${d?dec(-g/b):numSigned(-g/b)}`;
+  if(isZero(b)) return `${X} = ${d?dec(-g/a):numSigned(-g/a)}`;
+  return `${Y} = ${poly([[-a/b,X],[-g/b,'']],d)}`;
+}
+const numSigned=v=>(v<0?'−':'')+numH(v);
+
+/* ---------- painel ---------- */
+const formsEl=document.getElementById('forms'), factsEl=document.getElementById('facts'), distEl=document.getElementById('dist');
+const $=id=>document.getElementById(id);
+const inp={h:$('inH'),k:$('inK'),qx:$('inQx'),qy:$('inQy')};
+const inT=document.getElementById('inT');
+function deg(){ return isV()?90:S.th*180/Math.PI; }
+function syncInputs(){
+  for(const key in inp){ const el=inp[key]; if(document.activeElement!==el) el.value=clean(S[key]); }
+  if(document.activeElement!==inT) inT.value=Math.round(deg()*100)/100;
+}
+// formas de função (diretriz horizontal ou vertical). ind = variável livre, dep = dependente
+function funcForms(fi,fd,d,I,Dn){
+  const f=fd-d, a=1/(2*f), vi=fi, vd=(fd+d)/2, b=-2*a*vi, c=a*vi*vi+vd;
+  const iV=`<i>${I}</i>`, dV=`<i>${Dn}</i>`;
+  const g=`${dV} = ${poly([[a,iV+'²'],[b,iV],[c,'']])}`;
+  let v=`${dV} = ${coef(a,true)}${shift(vi,I)}²`; if(!isZero(vd)) v+=`${sgn(vd,false)}${numH(vd)}`;
+  const cn=`${shift(vi,I)}² = ${coef(4*(f/2),true)}${isZero(vd)?dV:shift(vd,Dn)}`;
+  return {a,b,c,g,v,cn};
+}
+function updatePanel(){
+  syncInputs();
+  const m=model();
+  if(!m){
+    formsEl.innerHTML=`<div class="form"><p class="warn">O foco está sobre a diretriz. Nesse caso não existe parábola: afaste o foco da reta.</p></div>`;
+    factsEl.innerHTML=''; distEl.innerHTML=''; return;
+  }
+  // equação geral da cônica
+  const raw=[m.A,m.B,m.C,m.D,m.E,m.F], I=intCoefs(raw), cf=I||raw, dOnly=!I;
+  const conic=`${poly([[cf[0],X+'²'],[cf[1],X+Y],[cf[2],Y+'²'],[cf[3],X],[cf[4],Y],[cf[5],'']],dOnly)} = 0`;
+  // diretriz: n·P − c = 0
+  const L0=[m.n[0],m.n[1],-m.c], LI=intCoefs(L0), Lc=LI||L0;
+  const N2=Lc[0]**2+Lc[1]**2;
+  const lin=poly([[Lc[0],X],[Lc[1],Y],[Lc[2],'']],!LI);
+  const den=LI?sqrtH(N2):null;
+  const rhs = den==='1'||!LI ? `|${lin}|` : `<span class="fr"><span>|${lin}|</span><span>${den}</span></span>`;
+  const df=`<span style="font-size:.9em">√<span class="sqrt">${shift(S.h,'x')}² + ${shift(S.k,'y')}²</span> = ${rhs}</span>`;
+  const conicCard=(main)=>`<div class="form${main?' main':''}"><div class="name">Equação geral da cônica · Ax² + Bxy + Cy² + Dx + Ey + F = 0</div><div class="math">${conic}</div></div>`;
+  const defCard=`<div class="form"><div class="name">Definição · d(P, F) = d(P, diretriz)</div><div class="math">${df}</div></div>`;
+
+  let html='', extra=[];
+  if(isH()||isV()){
+    const hz=isH();
+    const R=hz?funcForms(S.h,S.k,S.qy,'x','y'):funcForms(S.k,S.h,S.qx,'y','x');
+    const lbl=hz?'y = ax² + bx + c':'x = ay² + by + c';
+    const vl=hz?'y = a(x − x<sub>V</sub>)² + y<sub>V</sub>':'x = a(y − y<sub>V</sub>)² + x<sub>V</sub>';
+    const cl=hz?'(x − x<sub>V</sub>)² = 4p(y − y<sub>V</sub>)':'(y − y<sub>V</sub>)² = 4p(x − x<sub>V</sub>)';
+    html=`<div class="form main"><div class="name">Forma geral · ${lbl}</div><div class="math">${R.g}</div></div>
+      <div class="form"><div class="name">Forma do vértice · ${vl}</div><div class="math">${R.v}</div></div>
+      <div class="form"><div class="name">Forma canônica · ${cl}</div><div class="math">${R.cn}</div></div>
+      ${defCard}${conicCard(false)}`;
+    if(!hz) html+=`<p class="callout">Com a diretriz vertical, a parábola “deita”: é x que se escreve em função de y. Ela não é gráfico de uma função de x.</p>`;
+    extra=[['a, b, c',`${dec(R.a,3)}; ${dec(R.b,3)}; ${dec(R.c,3)}`],
+           ['Concavidade', hz?(R.a>0?'para cima (a > 0)':'para baixo (a < 0)'):(R.a>0?'para a direita (a > 0)':'para a esquerda (a < 0)')]];
+    if(hz) extra.push(['Δ',dec(R.b*R.b-4*R.a*R.c,3)]);
+  } else {
+    html=`${conicCard(true)}${defCard}
+      <p class="callout">Com a diretriz inclinada, aparece o termo em <i>xy</i>. A curva continua sendo uma parábola, mas não é gráfico de uma função <i>y = f(x)</i>: há retas verticais que a cortam em dois pontos.</p>`;
+  }
+  formsEl.innerHTML=html;
+
+  // cortes nos eixos
+  const cuts=(a,b,c,axis)=>{
+    let r=[];
+    if(Math.abs(a)<1e-12){ if(Math.abs(b)>1e-12) r=[-c/b]; }
+    else { const dl=b*b-4*a*c; if(Math.abs(dl)<1e-9) r=[-b/(2*a)]; else if(dl>0) r=[(-b-Math.sqrt(dl))/(2*a),(-b+Math.sqrt(dl))/(2*a)]; }
+    r.sort((p,q)=>p-q);
+    return r.length? r.map(v=>`${axis} = ${dec(v)}`).join(' e ') : 'não corta';
+  };
+  const axis = lineH(m.u[0],m.u[1],-(m.u[0]*S.h+m.u[1]*S.k));
+  const dirTxt = lineH(...L0);
+  const slope = isV()?'vertical':(()=>{const t=Math.tan(S.th), f=fracOf(t,12); return 'm = '+(f?(f.n<0?'−':'')+(f.d===1?Math.abs(f.n):Math.abs(f.n)+'/'+f.d):dec(t,3));})();
+  const rows=[
+    ['Foco F',`(${dec(S.h)}; ${dec(S.k)})`],
+    ['Diretriz',dirTxt],
+    ['Ângulo θ',`${dec(deg(),1)}°  (${slope})`],
+    ['Vértice V',`(${dec(m.V[0])}; ${dec(m.V[1])})`],
+    ['Eixo de simetria',axis],
+    ['Distância V até F',`|p| = ${dec(Math.abs(m.p))}`],
+    ...extra,
+    ['Corta o eixo x',cuts(m.A,m.D,m.F,'x')],
+    ['Corta o eixo y',cuts(m.C,m.E,m.F,'y')],
+  ];
+  factsEl.innerHTML=rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+
+  if(S.showP){
+    const P=ptAt(m,S.t), pf=Math.hypot(P[0]-S.h,P[1]-S.k), pd=Math.abs(m.n[0]*P[0]+m.n[1]*P[1]-m.c);
+    distEl.innerHTML=`<span>P = (${dec(P[0])}; ${dec(P[1])})</span><span class="pf">PF = <b>${dec(pf,3)}</b></span><span class="pd">PD = <b>${dec(pd,3)}</b></span>`;
+  } else distEl.innerHTML='<span class="note">Ative “ponto P” para comparar as distâncias.</span>';
+}
+
+/* ---------- desenho ---------- */
+const toPx=(x,y)=>[W/2+(x-V.cx)*V.u, H/2-(y-V.cy)*V.u];
+const toU=(px,py)=>[V.cx+(px-W/2)/V.u, V.cy-(py-H/2)/V.u];
+const col=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const KNOB=80; // px entre Q e a alça de giro
+function knobPos(){ const {u}=dirs(), [qx,qy]=toPx(S.qx,S.qy); return [qx+u[0]*KNOB, qy-u[1]*KNOB]; }
+
+function resize(){
+  const r=cv.getBoundingClientRect(); dpr=window.devicePixelRatio||1;
+  W=r.width; H=r.height; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); draw();
+}
+function niceStep(){ const target=60/V.u, p=10**Math.floor(Math.log10(target)); for(const k of [1,2,5,10]) if(k*p>=target) return k*p; }
+function draw(){
+  if(!W) return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const C={paper:col('--paper'),grid:col('--grid'),gs:col('--grid-strong'),axis:col('--axis'),curve:col('--curve'),focus:col('--focus'),dir:col('--dir'),pt:col('--pt'),muted:col('--muted'),panel:col('--panel')};
+  ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+  const [x0,y1]=toU(0,0), [x1,y0]=toU(W,H);
+  const major=niceStep(), minor=major/(V.u>45?4:5);
+  const gridLines=(st,color)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=1; ctx.beginPath();
+    for(let x=Math.ceil(x0/st)*st;x<=x1;x+=st){const X=Math.round(toPx(x,0)[0])+.5;ctx.moveTo(X,0);ctx.lineTo(X,H);}
+    for(let y=Math.ceil(y0/st)*st;y<=y1;y+=st){const Yp=Math.round(toPx(0,y)[1])+.5;ctx.moveTo(0,Yp);ctx.lineTo(W,Yp);}
+    ctx.stroke();
+  };
+  if(minor*V.u>6) gridLines(minor,C.grid);
+  gridLines(major,C.gs);
+  const [ox,oy]=toPx(0,0);
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(0,oy);ctx.lineTo(W,oy);ctx.moveTo(ox,0);ctx.lineTo(ox,H);ctx.stroke();
+  ctx.fillStyle=C.muted; ctx.font='12px "JetBrains Mono", monospace';
+  const lx=Math.min(Math.max(ox,4),W-30), ly=Math.min(Math.max(oy,4),H-18);
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for(let x=Math.ceil(x0/major)*major;x<=x1;x+=major){ if(Math.abs(x)<1e-9) continue; ctx.fillText(dec(x),toPx(x,0)[0],ly+4);}
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let y=Math.ceil(y0/major)*major;y<=y1;y+=major){ if(Math.abs(y)<1e-9) continue; ctx.fillText(dec(y),lx-5,toPx(0,y)[1]);}
+  ctx.textBaseline='top'; ctx.fillText('0',ox-5,oy+4);
+  ctx.font='italic 15px "STIX Two Text", serif'; ctx.fillStyle=C.axis;
+  ctx.textAlign='right'; ctx.fillText('x',W-8,oy+6); ctx.textAlign='left'; ctx.fillText('y',ox+8,6);
+
+  const m=model(), {u,n}=dirs();
+  const diag=Math.hypot(W,H)/V.u+Math.hypot(S.qx-V.cx,S.qy-V.cy)+10;
+  // diretriz
+  const [Qx,Qy]=toPx(S.qx,S.qy), up=[u[0],-u[1]];
+  const dActive=['d','q','r'].includes(hover)||['d','q','r'].includes(drag);
+  ctx.strokeStyle=C.dir; ctx.lineWidth=dActive?4:2.5; ctx.beginPath();
+  ctx.moveTo(Qx-up[0]*diag*V.u,Qy-up[1]*diag*V.u); ctx.lineTo(Qx+up[0]*diag*V.u,Qy+up[1]*diag*V.u); ctx.stroke();
+
+  if(m){
+    // eixo de simetria
+    const [fx0,fy0]=toPx(S.h,S.k), np=[n[0],-n[1]];
+    ctx.setLineDash([3,5]); ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.beginPath();
+    ctx.moveTo(fx0-np[0]*diag*V.u,fy0-np[1]*diag*V.u); ctx.lineTo(fx0+np[0]*diag*V.u,fy0+np[1]*diag*V.u); ctx.stroke(); ctx.setLineDash([]);
+    // parábola
+    const T=Math.sqrt(2*Math.abs(m.s)*(diag*3))+diag*2;
+    ctx.strokeStyle=C.curve; ctx.lineWidth=3; ctx.lineJoin='round'; ctx.beginPath();
+    let started=false;
+    for(let i=-1200;i<=1200;i++){
+      const tau=i/1200, t=T*Math.sign(tau)*tau*tau, [x,y]=ptAt(m,t), [px,py]=toPx(x,y);
+      if(Math.abs(px)>2e4||Math.abs(py)>2e4){started=false;continue;}
+      started?ctx.lineTo(px,py):(ctx.moveTo(px,py),started=true);
+    }
+    ctx.stroke();
+    const [vx,vy]=toPx(...m.V);
+    ctx.fillStyle=C.curve; ctx.beginPath(); ctx.arc(vx,vy,4.5,0,7); ctx.fill();
+    const away=[-np[0]*Math.sign(m.s),-np[1]*Math.sign(m.s)];
+    ctx.font='italic 16px "STIX Two Text", serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('V',vx+away[0]*14+up[0]*12,vy+away[1]*14+up[1]*12);
+
+    if(S.showP){
+      const P=ptAt(m,S.t), [Px,Py]=toPx(...P), [Fx,Fy]=toPx(S.h,S.k);
+      const e=m.n[0]*P[0]+m.n[1]*P[1]-m.c, Dp=[P[0]-e*n[0],P[1]-e*n[1]], [Dx,Dy]=toPx(...Dp);
+      ctx.setLineDash([6,5]); ctx.lineWidth=2;
+      ctx.strokeStyle=C.focus; ctx.beginPath(); ctx.moveTo(Px,Py); ctx.lineTo(Fx,Fy); ctx.stroke();
+      ctx.strokeStyle=C.dir; ctx.beginPath(); ctx.moveTo(Px,Py); ctx.lineTo(Dx,Dy); ctx.stroke(); ctx.setLineDash([]);
+      const len=Math.hypot(Px-Dx,Py-Dy);
+      if(len>12){
+        const w=[(Px-Dx)/len,(Py-Dy)/len], s=8;
+        ctx.lineWidth=1.2; ctx.beginPath();
+        ctx.moveTo(Dx+w[0]*s,Dy+w[1]*s); ctx.lineTo(Dx+w[0]*s+up[0]*s,Dy+w[1]*s+up[1]*s); ctx.lineTo(Dx+up[0]*s,Dy+up[1]*s); ctx.stroke();
+      }
+      ctx.fillStyle=C.dir; ctx.beginPath(); ctx.arc(Dx,Dy,3.5,0,7); ctx.fill();
+      ctx.fillStyle=C.pt; ctx.beginPath(); ctx.arc(Px,Py,hover==='p'||drag==='p'?9:7,0,7); ctx.fill();
+      ctx.strokeStyle=C.paper; ctx.lineWidth=2; ctx.stroke();
+      ctx.font='italic 17px "STIX Two Text", serif'; ctx.fillStyle=C.pt; ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.fillText('P',Px+10,Py-6);
+      const pf=Math.hypot(P[0]-S.h,P[1]-S.k);
+      ctx.font='600 12px "JetBrains Mono", monospace';
+      pill(dec(pf),(Px+Fx)/2,(Py+Fy)/2,C.focus,C.panel);
+      pill(dec(Math.abs(e)),(Px+Dx)/2-up[0]*26,(Py+Dy)/2-up[1]*26,C.dir,C.panel);
+    }
+  }
+
+  // ângulo θ, alças Q e de giro
+  const ang=isV()?Math.PI/2:S.th;
+  ctx.setLineDash([4,4]); ctx.strokeStyle=C.dir; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(Qx,Qy); ctx.lineTo(Qx+52,Qy); ctx.stroke(); ctx.setLineDash([]);
+  if(Math.abs(ang)>1e-6){
+    ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(Qx,Qy,36,0,-ang,ang>0); ctx.stroke();
+    ctx.font='italic 14px "STIX Two Text", serif'; ctx.fillStyle=C.dir; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(`θ = ${dec(deg(),1)}°`,Qx+44*Math.cos(ang/2)+4,Qy-44*Math.sin(ang/2));
+  }
+  ctx.fillStyle=C.panel; ctx.strokeStyle=C.dir; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.arc(Qx,Qy,hover==='q'||drag==='q'?8:6,0,7); ctx.fill(); ctx.stroke();
+  ctx.font='italic 15px "STIX Two Text", serif'; ctx.fillStyle=C.dir; ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText('Q',Qx-8,Qy+6);
+  const [kx,ky]=knobPos(), kr=hover==='r'||drag==='r'?12:10;
+  ctx.fillStyle=C.dir; ctx.beginPath(); ctx.arc(kx,ky,kr,0,7); ctx.fill();
+  ctx.strokeStyle=C.paper; ctx.lineWidth=1.8; ctx.beginPath(); ctx.arc(kx,ky,kr-5,-2.4,1.6); ctx.stroke();
+  ctx.beginPath(); const ax=kx+(kr-5)*Math.cos(1.6), ay=ky+(kr-5)*Math.sin(1.6); ctx.moveTo(ax-3,ay-1); ctx.lineTo(ax,ay); ctx.lineTo(ax+1,ay-3.5); ctx.stroke();
+
+  // foco
+  const [fx,fy]=toPx(S.h,S.k), r=hover==='f'||drag==='f'?10:8;
+  ctx.fillStyle=C.focus; ctx.beginPath(); ctx.arc(fx,fy,r,0,7); ctx.fill();
+  ctx.strokeStyle=C.paper; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.font='italic 600 17px "STIX Two Text", serif'; ctx.fillStyle=C.focus; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('F',fx+13,fy);
+}
+function pill(t,x,y,c,bg){
+  const w=ctx.measureText(t).width+12;
+  ctx.fillStyle=bg; ctx.strokeStyle=c; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(x-w/2,y-10,w,20,6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=c; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t,x,y+1);
+}
+
+/* ---------- interação ---------- */
+let drag=null, hover=null, panStart=null;
+function hit(px,py){
+  const [fx,fy]=toPx(S.h,S.k); if(Math.hypot(px-fx,py-fy)<20) return 'f';
+  const [kx,ky]=knobPos(); if(Math.hypot(px-kx,py-ky)<18) return 'r';
+  const m=model();
+  if(m&&S.showP){const [Px,Py]=toPx(...ptAt(m,S.t)); if(Math.hypot(px-Px,py-Py)<20) return 'p';}
+  const [Qx,Qy]=toPx(S.qx,S.qy); if(Math.hypot(px-Qx,py-Qy)<16) return 'q';
+  const {n}=dirs(), [ux,uy]=toU(px,py);
+  if(Math.abs(n[0]*(ux-S.qx)+n[1]*(uy-S.qy))*V.u<12) return 'd';
+  return null;
+}
+// recoloca Q num ponto da malha sobre a reta, perto do pé da perpendicular do foco
+function reanchor(){
+  const {n}=dirs(), c=n[0]*S.qx+n[1]*S.qy, e=n[0]*S.h+n[1]*S.k-c;
+  const foot=[S.h-e*n[0],S.k-e*n[1]];
+  if(S.step<0.1){ S.qx=clean(foot[0]); S.qy=clean(foot[1]); return; }
+  const st=S.step, R=Math.ceil(4/st); let best=null,bd=1e9;
+  const cx=Math.round(foot[0]/st), cy=Math.round(foot[1]/st);
+  for(let i=-R;i<=R;i++)for(let j=-R;j<=R;j++){
+    const x=(cx+i)*st, y=(cy+j)*st;
+    if(Math.abs(n[0]*x+n[1]*y-c)>1e-7) continue;
+    const dd=(x-foot[0])**2+(y-foot[1])**2; if(dd<bd){bd=dd;best=[x,y];}
+  }
+  if(best){S.qx=clean(best[0]); S.qy=clean(best[1]);}
+}
+function pos(e){const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top];}
+cv.addEventListener('pointerdown',e=>{
+  const [px,py]=pos(e); cv.setPointerCapture(e.pointerId);
+  drag=hit(px,py);
+  if(!drag) panStart={px,py,cx:V.cx,cy:V.cy};
+  cv.className='grabbing'; move(e);
+});
+cv.addEventListener('pointermove',move);
+function move(e){
+  const [px,py]=pos(e), [ux,uy]=toU(px,py);
+  if(drag==='f'){ S.h=clean(snap(ux)); S.k=clean(snap(uy)); }
+  else if(drag==='d'||drag==='q'){ S.qx=clean(snap(ux)); S.qy=clean(snap(uy)); }
+  else if(drag==='r'){
+    let a=normTh(Math.atan2(uy-S.qy,ux-S.qx));
+    if(S.step<0.1) a=normTh(Math.round(a*180/Math.PI)*Math.PI/180);
+    else { let best=0,bd=9; for(const s of SNAP_ANG){ let d=Math.abs(a-s); d=Math.min(d,Math.PI-d); if(d<bd){bd=d;best=s;} } a=best; }
+    S.th=Math.abs(Math.abs(a)-Math.PI/2)<1e-9?Math.PI/2:a;
+  }
+  else if(drag==='p'){ const m=model(); if(m) S.t=(ux-m.V[0])*m.u[0]+(uy-m.V[1])*m.u[1]; }
+  else if(panStart){ V.cx=panStart.cx-(px-panStart.px)/V.u; V.cy=panStart.cy+(py-panStart.py)/V.u; }
+  else { const h=hit(px,py); if(h!==hover){hover=h; cv.className=h?'grab':''; draw();} return; }
+  render();
+}
+const end=()=>{
+  if(drag==='f'||drag==='d'||drag==='q') reanchor();
+  drag=null; panStart=null; cv.className=hover?'grab':''; render();
+};
+cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+cv.addEventListener('pointerleave',()=>{if(!drag&&!panStart){hover=null;draw();}});
+cv.addEventListener('wheel',e=>{ e.preventDefault(); const [px,py]=pos(e), [ux,uy]=toU(px,py); zoomAt(e.deltaY<0?1.15:1/1.15,ux,uy,px,py); },{passive:false});
+function zoomAt(f,ux,uy,px,py){ V.u=Math.min(200,Math.max(8,V.u*f)); V.cx=ux-(px-W/2)/V.u; V.cy=uy+(py-H/2)/V.u; draw(); }
+document.getElementById('zin').onclick=()=>zoomAt(1.25,V.cx,V.cy,W/2,H/2);
+document.getElementById('zout').onclick=()=>zoomAt(1/1.25,V.cx,V.cy,W/2,H/2);
+document.getElementById('zreset').onclick=()=>{fit();draw();};
+function fit(){
+  const m=model(), c=m?m.V:[S.h,S.k], s=m?Math.abs(m.s):2;
+  V.cx=c[0]; V.cy=c[1]+(m&&isH()?Math.sign(m.s)*s*1.2:0);
+  V.u=Math.max(16,Math.min(W,H)/(Math.max(10,s*5)+2));
+}
+for(const key in inp){
+  inp[key].addEventListener('input',()=>{const v=parseFloat(inp[key].value); if(!isNaN(v)){S[key]=v; render();}});
+}
+inT.addEventListener('input',()=>{const v=parseFloat(inT.value); if(isNaN(v)) return;
+  const a=normTh(v*Math.PI/180); S.th=Math.abs(Math.abs(a)-Math.PI/2)<1e-9?Math.PI/2:(Math.abs(a)<1e-12?0:a); render();});
+const snapEl=document.getElementById('snap');
+function setSnap(s){S.step=s; for(const b of snapEl.children) b.setAttribute('aria-pressed',+b.dataset.s===s);}
+snapEl.addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setSnap(+b.dataset.s);});
+document.getElementById('showP').addEventListener('change',e=>{S.showP=e.target.checked; render();});
+document.getElementById('presets').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const [h,k,qx,qy,dg]=b.dataset.p.split(',').map(Number);
+  Object.assign(S,{h,k,qx,qy,th:dg===90?Math.PI/2:dg*Math.PI/180,t:2});
+  if(S.step>0.25) setSnap(0.25);
+  reanchor(); fit(); render();
+});
+
+function render(){draw(); updatePanel();}
+setSnap(0.25);
+new ResizeObserver(resize).observe(cv);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+document.fonts&&document.fonts.ready.then(draw);
+requestAnimationFrame(()=>{const r=cv.getBoundingClientRect();W=r.width;H=r.height;fit();resize();updatePanel();});
+updatePanel();
+})();
+</script>
+
+</body>
+</html>
